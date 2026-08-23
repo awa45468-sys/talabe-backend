@@ -1,30 +1,3 @@
-{
-  "name": "talabti-app",
-  "version": "1.0.0",
-  "description": "منصة طلبتي التعليمية الشاملة - العراق",
-  "main": "server.js",
-  "scripts": {
-    "start": "node server.js"
-  },
-  "dependencies": {
-    "express": "^4.18.2"
-  }
-}
-{
-  "version": 2,
-  "builds": [
-    {
-      "src": "server.js",
-      "use": "@vercel/node"
-    }
-  ],
-  "routes": [
-    {
-      "src": "/(.*)",
-      "dest": "server.js"
-    }
-  ]
-}
 const express = require('express');
 const app = express();
 
@@ -61,7 +34,6 @@ let subjects = [
   { id: 105, stage_id: 6, name: "العلوم والرياضيات", price: 10000, desc: "مرشحات السادس الابتدائي الوزارية" }
 ];
 
-// إنشاء مرشحات ووزاريات تلقائية لكل مادة من عام 2012 إلى 2026
 let content = [];
 let contentIdCounter = 1;
 
@@ -82,7 +54,6 @@ subjects.forEach(sub => {
 let subscriptions = [];
 let examResults = [];
 
-// بنك أسئلة امتحان نفسي
 let questionBank = {
   101: [
     { id: 1, q: "ما هي وحدة قياس الحرارة النوعية؟", options: ["J/g.°C", "J/mol", "kJ", "J.°C"], correct: 0, diff: "easy" },
@@ -96,7 +67,7 @@ let questionBank = {
 };
 
 // ======================================================
-// 2. مسارات ملفات PWA (Manifest & Service Worker)
+// 2. مسارات PWA
 // ======================================================
 
 app.get('/manifest.json', (req, res) => {
@@ -131,14 +102,13 @@ app.get('/sw.js', (req, res) => {
 });
 
 // ======================================================
-// 3. مسارات واجهة البرمجة (APIs Backend)
+// 3. مسارات APIs Backend
 // ======================================================
 
-// تسجيل جديد
 app.post('/api/auth/register', (req, res) => {
   const { phone, password, full_name, gender, governorate, stage_id } = req.body;
   if (!phone || !password || !full_name || !governorate) {
-    return res.status(400).json({ success: false, message: "يرجى ملء جميع البيانات المطلوب." });
+    return res.status(400).json({ success: false, message: "يرجى ملء جميع البيانات المطلوبة." });
   }
   if (users.find(u => u.phone === phone)) {
     return res.status(400).json({ success: false, message: "رقم الهاتف مسجل سابقاً." });
@@ -148,7 +118,6 @@ app.post('/api/auth/register', (req, res) => {
   res.json({ success: true, user: newUser });
 });
 
-// تسجيل الدخول
 app.post('/api/auth/login', (req, res) => {
   const { phone, password } = req.body;
   const user = users.find(u => u.phone === phone && u.password === password);
@@ -156,11 +125,9 @@ app.post('/api/auth/login', (req, res) => {
   res.json({ success: true, user });
 });
 
-// المراحل والمواد
 app.get('/api/stages', (req, res) => res.json({ success: true, stages }));
 app.get('/api/subjects', (req, res) => res.json({ success: true, subjects }));
 
-// جلب المرشحات والوزاريات من 2012 إلى 2026
 app.get('/api/content/:subjectId', (req, res) => {
   const { subjectId } = req.params;
   const { year } = req.query;
@@ -169,7 +136,6 @@ app.get('/api/content/:subjectId', (req, res) => {
   res.json({ success: true, data: items });
 });
 
-// طلب الاشتراك وتفعيل المادة (10,000 IQD)
 app.post('/api/subscriptions/pay', (req, res) => {
   const { user_id, subject_id, method, receipt } = req.body;
   const newSub = {
@@ -186,17 +152,15 @@ app.post('/api/subscriptions/pay', (req, res) => {
   res.json({ success: true, message: "تم تفعيل الاشتراك وتم فتح المادة بنجاح!", subscription: newSub });
 });
 
-// إتاحة المواد المشتركة للمستخدم
 app.get('/api/subscriptions/user/:userId', (req, res) => {
   const userSubs = subscriptions.filter(s => s.user_id == req.params.userId && s.status === 'approved');
   res.json({ success: true, active_subject_ids: userSubs.map(s => s.subject_id) });
 });
 
-// نظام "امتحن نفسي"
 app.post('/api/exams/start', (req, res) => {
   const { subject_id, count, difficulty } = req.body;
   let qList = questionBank[subject_id] || [
-    { id: 99, q: "سؤال افتراضي: ما هي أهم نقطة للتركيز عليها بالامتحان الوزاري؟", options: ["فهم القوانين والحل النموذج", "الحفظ السطحي فقط", "إهمال المراجعة"], correct: 0, diff: "easy" }
+    { id: 99, q: "سؤال افتراضي: ما هي أهم نقطة للتركيز عليها بالامتحان الوزاري؟", options: ["فهم القوانين والحل النموذجي", "الحفظ السطحي فقط", "إهمال المراجعة"], correct: 0, diff: "easy" }
   ];
   if (difficulty && difficulty !== "all") {
     qList = qList.filter(q => q.diff === difficulty);
@@ -204,7 +168,6 @@ app.post('/api/exams/start', (req, res) => {
   res.json({ success: true, questions: qList.slice(0, parseInt(count) || 10) });
 });
 
-// حفظ نتيجة الامتحان
 app.post('/api/exams/submit', (req, res) => {
   const { user_id, subject_id, score, total } = req.body;
   const percentage = Math.round((score / total) * 100);
@@ -213,14 +176,12 @@ app.post('/api/exams/submit', (req, res) => {
   res.json({ success: true, result });
 });
 
-// مساعد طلبتي AI
 app.post('/api/ai/chat', (req, res) => {
   const { prompt } = req.body;
   const reply = `أهلاً بك في مساعد طلبتي الذكي 🤖\nبناءً على المنهج العراقي لـ "${prompt}": يُنصح بضبط التعاريف المكررة وزارياً للسنوات (2012-2026) واتباع خطوات الحل المعتمدة بمركز الفحص.`;
   res.json({ success: true, reply });
 });
 
-// إحصائيات الأدمن
 app.get('/api/admin/stats', (req, res) => {
   res.json({
     success: true,
@@ -235,7 +196,7 @@ app.get('/api/admin/stats', (req, res) => {
 });
 
 // ======================================================
-// 4. الواجهة الأمامية الشاملة (HTML + RTL Frontend + PWA)
+// 4. الواجهة الأمامية (HTML + RTL)
 // ======================================================
 
 app.get('*', (req, res) => {
@@ -261,7 +222,6 @@ app.get('*', (req, res) => {
 </head>
 <body>
 
-  <!-- الهيدر الرئيسي -->
   <header class="hero-header text-center mb-4">
     <div class="container">
       <h2 class="fw-bold"><i class="bi bi-mortarboard-fill text-warning me-2"></i>طلبتي | Talabti</h2>
@@ -270,14 +230,11 @@ app.get('*', (req, res) => {
   </header>
 
   <div class="container mb-5">
-
-    <!-- شريط تثبيت التطبيق PWA -->
     <div id="pwaBanner" class="alert alert-warning d-none d-flex justify-content-between align-items-center rounded-4 shadow-sm mb-4">
-      <div><i class="bi bi-phone-vibrate me-2"></i> ثبت <strong>تطبيق طلبتي</strong> على شاشة هاتفك الرئيسية الآن!</div>
+      <div><i class="bi bi-phone-vibrate me-2"></i> تثبيت <strong>تطبيق طلبتي</strong> على شاشة هاتفك الرئيسية الآن!</div>
       <button class="btn btn-dark btn-sm rounded-pill px-3" onclick="installApp()">تثبيت</button>
     </div>
 
-    <!-- أزرار القائمة الرئيسية -->
     <div class="d-flex gap-2 overflow-auto mb-4 pb-2">
       <button class="btn btn-primary rounded-pill px-3 flex-shrink-0" onclick="showModal('authModal')"><i class="bi bi-person-fill me-1"></i> دخول / تسجيل الطالب</button>
       <button class="btn btn-outline-primary rounded-pill px-3 flex-shrink-0" onclick="showModal('examModal')"><i class="bi bi-pencil-square me-1"></i> امتحن نفسي</button>
@@ -285,17 +242,14 @@ app.get('*', (req, res) => {
       <button class="btn btn-outline-success rounded-pill px-3 flex-shrink-0" onclick="showModal('adminModal')"><i class="bi bi-shield-lock me-1"></i> لوحة الأدمن</button>
     </div>
 
-    <!-- تصفية المراحل الدراسية -->
     <div class="card card-custom p-3 mb-4">
       <h6 class="fw-bold mb-3"><i class="bi bi-funnel-fill text-primary me-2"></i>اختر المرحلة والفرع الدراسي:</h6>
       <div class="d-flex flex-wrap gap-2" id="stagesContainer"></div>
     </div>
 
-    <!-- قائمة المواد المتاحة -->
     <h5 class="fw-bold mb-3"><i class="bi bi-book-half text-primary me-2"></i>المواد والاشتراكات:</h5>
     <div class="row g-3 mb-5" id="subjectsContainer"></div>
 
-    <!-- عرض مرشحات ووزاريات المادة (2012 - 2026) -->
     <div id="contentSection" class="card card-custom p-4 d-none">
       <div class="d-flex justify-content-between align-items-center mb-4 flex-wrap gap-2">
         <h5 class="fw-bold mb-0" id="currentSubjectTitle">المرشحات والأسئلة الوزارية</h5>
@@ -309,10 +263,8 @@ app.get('*', (req, res) => {
       </div>
       <div class="row g-3" id="contentList"></div>
     </div>
-
   </div>
 
-  <!-- Modal 1: تسجيل ودخول الطالب -->
   <div class="modal fade" id="authModal" tabindex="-1">
     <div class="modal-dialog modal-dialog-centered">
       <div class="modal-content rounded-4 border-0">
@@ -355,7 +307,6 @@ app.get('*', (req, res) => {
     </div>
   </div>
 
-  <!-- Modal 2: الدفع والاشتراك (10,000 IQD) -->
   <div class="modal fade" id="payModal" tabindex="-1">
     <div class="modal-dialog modal-dialog-centered">
       <div class="modal-content rounded-4 border-0">
@@ -384,7 +335,6 @@ app.get('*', (req, res) => {
     </div>
   </div>
 
-  <!-- Modal 3: امتحن نفسي -->
   <div class="modal fade" id="examModal" tabindex="-1">
     <div class="modal-dialog modal-dialog-centered modal-lg">
       <div class="modal-content rounded-4 border-0">
@@ -427,7 +377,6 @@ app.get('*', (req, res) => {
     </div>
   </div>
 
-  <!-- Modal 4: مساعد طلبتي AI -->
   <div class="modal fade" id="aiModal" tabindex="-1">
     <div class="modal-dialog modal-dialog-centered">
       <div class="modal-content rounded-4 border-0">
@@ -448,7 +397,6 @@ app.get('*', (req, res) => {
     </div>
   </div>
 
-  <!-- Modal 5: لوحة تحكم الأدمن -->
   <div class="modal fade" id="adminModal" tabindex="-1">
     <div class="modal-dialog modal-dialog-centered modal-lg">
       <div class="modal-content rounded-4 border-0">
@@ -707,7 +655,6 @@ app.get('*', (req, res) => {
 
 module.exports = app;
 
-// التشغيل المحلي فقط عند تشغيل الملف بـ node server.js
 if (process.env.NODE_ENV !== 'production' && !process.env.VERCEL) {
   const PORT = process.env.PORT || 3000;
   app.listen(PORT, () => console.log(`🚀 Talabti Platform Running on http://localhost:${PORT}`));
