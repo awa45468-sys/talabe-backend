@@ -1,5 +1,5 @@
 // ==============================================================================================
-// 🎓 منصة طلبتي التعليمية الشاملة - نظام التحقق برقم الهاتف ولوحة التحكم المحمية (2026)
+// 🎓 منصة طلبتي التعليمية - نظام التسجيل وقاعدة البيانات الحقيقية على السيرفر (2026)
 // ==============================================================================================
 
 const express = require('express');
@@ -26,7 +26,9 @@ app.get('/manifest.json', (req, res) => {
   });
 });
 
-// قاعدة بيانات وهمية للملازم، المرشحات، والنشاطات
+// 🗄️ قواعد البيانات الحقيقية على السيرفر
+let STUDENTS_DATABASE = []; // سيتم تخزين الطلاب المسجلين هنا حقيقياً
+
 let BOOKS_DATABASE = [
   {
     id: "book-1",
@@ -45,57 +47,65 @@ let BOOKS_DATABASE = [
   }
 ];
 
-let FILTERS_DATABASE = [
-  { id: "f-1", title: "مرشح الرياضيات الثالث متوسط", year: "2026", section: "الرياضيات" }
-];
-
 let ACTIVITIES = [
-  { text: "تم إطلاق المنصة وتفعيل نظام التحقق برقم الهاتف", time: "الآن" }
+  { text: "تم تحديث المنصة وتفعيل قاعدة بيانات الطلاب الحقيقية", time: "الآن" }
 ];
 
 // API Endpoints
 app.get('/api/books', (req, res) => res.json(BOOKS_DATABASE));
-app.get('/api/filters', (req, res) => res.json(FILTERS_DATABASE));
+
+// إرسال الإحصائيات الحقيقية تماماً للأدمن
 app.get('/api/stats', (req, res) => {
   res.json({
-    students: "50,250",
+    studentsCount: STUDENTS_DATABASE.length, // العدد الحقيقي للطلاب المسجلين
     booksCount: BOOKS_DATABASE.length,
-    sales: "125,500",
-    filtersCount: FILTERS_DATABASE.length,
     activities: ACTIVITIES
   });
+});
+
+// تسجيل طالب جديد وحفظه في قاعدة البيانات
+app.post('/api/student/register', (req, res) => {
+  const { name, phone, password } = req.body;
+  
+  // التحقق إن كان رقم الهاتف مسجلاً مسبقاً
+  const existing = STUDENTS_DATABASE.find(s => s.phone === phone);
+  if(existing) {
+    return res.json({ success: false, message: "رقم الهاتف هذا مسجل مسبقاً، سجل دخولك مباشرة!" });
+  }
+
+  const newStudent = { id: 'stu-' + Date.now(), name, phone, password, joinedAt: new Date().toLocaleString() };
+  STUDENTS_DATABASE.push(newStudent);
+  ACTIVITIES.unshift({ text: `انضم طالب جديد: ${name}`, time: "الآن" });
+
+  res.json({ success: true, student: { name: newStudent.name, phone: newStudent.phone } });
 });
 
 // Admin Authentication API
 app.post('/api/admin/login', (req, res) => {
   const { username, password } = req.body;
-  // بيانات دخول الأدمن الخاصة بك (يمكنك تغييرها هنا)
   if (username === "admin" && password === "ahmad_admin_2026") {
     res.json({ success: true, message: "تم تسجيل دخول الأدمن بنجاح!" });
   } else {
-    res.status(401).json({ success: false, message: "اسم المستخدم أو كلمة مرور الأدمن غير صحيحة!" });
+    res.status(401).json({ success: false, message: "بيانات الأدمن غير صحيحة!" });
   }
 });
 
 app.post('/api/admin/add-book', (req, res) => {
-  const { title, subject, grade, pages, desc, cover, pdfUrl } = req.body;
+  const { title, subject, pdfUrl, desc } = req.body;
   const newBook = {
     id: 'book-' + Date.now(),
     title: title || "كتاب جديد",
     subject: subject || "عام",
-    grade: grade || "الثالث متوسط",
+    grade: "الثالث متوسط",
     year: "2026",
-    author: "لجنة طلبتي التخصصية",
-    pages: pages || "100 صفحة",
-    size: "15 MB",
-    rating: "5.0",
+    author: "لجنة طلبتي",
+    pages: "100 صفحة",
     desc: desc || "وصف الكتاب...",
-    badge: "جديد 🚀",
-    cover: cover || "https://images.unsplash.com/photo-1543269865-cbf427effbad?w=500&auto=format&fit=crop&q=60",
+    cover: "https://images.unsplash.com/photo-1543269865-cbf427effbad?w=500&auto=format&fit=crop&q=60",
     pdfUrl: pdfUrl || "https://www.w3.org/WAI/ER/tests/xhtml/testfiles/resources/pdf/dummy.pdf"
   };
   BOOKS_DATABASE.unshift(newBook);
-  ACTIVITIES.unshift({ text: `تم إضافة كتاب جديد: ${newBook.title}`, time: "الآن" });
+  ACTIVITIES.unshift({ text: `تم إضافة كتاب: ${newBook.title}`, time: "الآن" });
   res.json({ success: true, books: BOOKS_DATABASE });
 });
 
@@ -105,7 +115,7 @@ app.post('/api/admin/delete-book', (req, res) => {
   res.json({ success: true, books: BOOKS_DATABASE });
 });
 
-// الواجهة الأمامية الكاملة مع نظام OTP وإنشاء كلمة المرور ولوحة التحكم للأدمن
+// الواجهة الأمامية الشاملة
 app.get('*', (req, res) => {
   res.send(`
 <!DOCTYPE html>
@@ -116,21 +126,17 @@ app.get('*', (req, res) => {
   <title>منصة طلبتي | الملازم الوزارية 2026</title>
   <link rel="manifest" href="/manifest.json">
   <meta name="theme-color" content="#090d16">
-  <link rel="preconnect" href="https://fonts.googleapis.com">
-  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Tajawal:wght@400;500;700;800;900&family=Cairo:wght@600;700;800;900&display=swap" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=Tajawal:wght@400;500;700;800;900&display=swap" rel="stylesheet">
   <script src="https://cdn.tailwindcss.com"></script>
   <style>
-    body { font-family: 'Tajawal', 'Cairo', sans-serif; background-color: #070b14; color: #f1f5f9; }
+    body { font-family: 'Tajawal', sans-serif; background-color: #070b14; color: #f1f5f9; }
     .glass-card { background: rgba(15, 23, 42, 0.85); backdrop-filter: blur(16px); border: 1px solid rgba(255, 255, 255, 0.07); }
   </style>
 </head>
-<body class="min-h-screen pb-20 selection:bg-indigo-500 selection:text-white">
+<body class="min-h-screen pb-20">
 
   <div class="flex min-h-screen">
-    
-    <!-- Sidebar -->
-    <aside class="hidden lg:flex flex-col w-64 bg-[#090d16] border-l border-slate-800/80 p-5 sticky top-0 h-screen justify-between z-30">
+    <aside class="hidden lg:flex flex-col w-64 bg-[#090d16] border-l border-slate-800 p-5 sticky top-0 h-screen justify-between z-30">
       <div class="space-y-6">
         <div class="flex flex-col items-center text-center pb-6 border-b border-slate-800">
           <div class="w-14 h-14 rounded-2xl bg-gradient-to-tr from-indigo-600 to-blue-500 flex items-center justify-center text-3xl shadow-lg mb-3">🎓</div>
@@ -156,18 +162,14 @@ app.get('*', (req, res) => {
       <button onclick="logoutUser()" class="flex items-center gap-3 px-4 py-3 rounded-2xl text-rose-400 hover:bg-rose-500/10 text-xs font-bold transition">🚪 تسجيل خروج</button>
     </aside>
 
-    <!-- Main Content Area -->
     <main class="flex-1 max-w-5xl mx-auto px-4 sm:px-8 py-6 space-y-6">
       
-      <!-- TAB 1: HOME -->
+      <!-- HOME -->
       <div id="tab-home" class="space-y-6">
-        <div class="relative p-6 sm:p-8 rounded-3xl bg-gradient-to-br from-indigo-950 via-slate-900 to-indigo-950 border border-indigo-500/30 shadow-2xl">
-          <div class="relative z-10 space-y-3 max-w-xl">
-            <span class="px-3 py-1 rounded-full bg-indigo-500/20 text-indigo-300 text-[11px] font-bold border border-indigo-500/30">✨ مرحباً بك في منصة طلبتي</span>
-            <h2 class="text-2xl sm:text-3xl font-black text-white">كل ما تحتاجه للنجاح في مكان واحد</h2>
-            <p class="text-xs text-slate-300">تصفح أحدث الملازم والمرشحات الوزارية المضمونة 100%.</p>
-            <button onclick="switchTab('books')" class="px-5 py-2.5 rounded-2xl bg-indigo-600 hover:bg-indigo-500 text-white font-black text-xs shadow-lg">تصفح الكتب 📚</button>
-          </div>
+        <div class="p-6 rounded-3xl bg-gradient-to-br from-indigo-950 via-slate-900 to-indigo-950 border border-indigo-500/30 shadow-2xl space-y-3">
+          <span class="px-3 py-1 rounded-full bg-indigo-500/20 text-indigo-300 text-[11px] font-bold">✨ مرحباً بك في منصة طلبتي</span>
+          <h2 class="text-2xl font-black text-white">كل ما تحتاجه للنجاح في مكان واحد</h2>
+          <p class="text-xs text-slate-300">تصفح أحدث الملازم والمرشحات الوزارية المضمونة.</p>
         </div>
         <div>
           <h3 class="text-base font-black text-white mb-4">أحدث الكتب المضافة 📖</h3>
@@ -175,13 +177,13 @@ app.get('*', (req, res) => {
         </div>
       </div>
 
-      <!-- TAB 2: BOOKS -->
+      <!-- BOOKS -->
       <div id="tab-books" class="space-y-6 hidden">
         <h3 class="text-lg font-black text-white">جميع الكتب الدراسية</h3>
         <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4" id="all-books-grid"></div>
       </div>
 
-      <!-- TAB 3: LOGIN / REGISTER (رقم الهاتف والرمز) -->
+      <!-- LOGIN / OTP -->
       <div id="tab-login" class="max-w-md mx-auto py-6 space-y-6">
         <div class="text-center space-y-2">
           <div class="w-16 h-16 rounded-3xl bg-indigo-600 flex items-center justify-center text-3xl mx-auto shadow-xl">📱</div>
@@ -189,94 +191,70 @@ app.get('*', (req, res) => {
           <p class="text-xs text-slate-400">أدخل رقم هاتفك ليصلك رمز التحقق</p>
         </div>
 
-        <!-- الخطوة 1: ادخال الهاتف -->
         <div id="step-phone" class="glass-card p-6 rounded-3xl space-y-4">
-          <div>
-            <label class="block text-xs font-bold text-slate-300 mb-1">رقم الهاتف:</label>
-            <input type="tel" id="input-phone" placeholder="07700000000" class="w-full p-3 rounded-xl bg-slate-900 border border-slate-700 text-xs text-white focus:outline-none">
-          </div>
-          <button onclick="sendOtpCode()" class="w-full py-3.5 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white font-black text-xs shadow-lg">إرسال رمز التحقق 📨</button>
+          <input type="tel" id="input-phone" placeholder="رقم الهاتف (07700000000)" class="w-full p-3 rounded-xl bg-slate-900 border border-slate-700 text-xs text-white">
+          <button onclick="sendOtpCode()" class="w-full py-3.5 rounded-xl bg-indigo-600 text-white font-black text-xs">إرسال رمز التحقق 📨</button>
           <div class="text-center pt-2">
             <button onclick="showAdminLogin()" class="text-amber-400 text-xs font-bold underline">تسجيل دخول الأدمن (المشرف) ⚙️</button>
           </div>
         </div>
 
-        <!-- الخطوة 2: ادخال رمز التحقق OTP -->
         <div id="step-otp" class="glass-card p-6 rounded-3xl space-y-4 hidden">
-          <div class="p-3 rounded-xl bg-amber-500/10 border border-amber-500/30 text-amber-400 text-xs text-center font-bold" id="otp-hint">
-            تم إرسال الرمز التجريبي: <span id="actual-otp" class="text-white font-mono text-sm">1234</span>
+          <div class="p-3 rounded-xl bg-amber-500/10 border border-amber-500/30 text-amber-400 text-xs text-center font-bold">
+            رمز التحقق التجريبي: <span id="actual-otp" class="text-white font-mono text-sm">1234</span>
           </div>
-          <div>
-            <label class="block text-xs font-bold text-slate-300 mb-1">أدخل رمز التحقق المكون من 4 أرقام:</label>
-            <input type="text" id="input-otp" maxlength="4" placeholder="1234" class="w-full p-3 rounded-xl bg-slate-900 border border-slate-700 text-center tracking-widest text-lg font-mono text-white focus:outline-none">
-          </div>
-          <button onclick="verifyOtpCode()" class="w-full py-3.5 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white font-black text-xs shadow-lg">تأكيد الرمز ✅</button>
+          <input type="text" id="input-otp" maxlength="4" placeholder="أدخل الرمز (1234)" class="w-full p-3 rounded-xl bg-slate-900 border border-slate-700 text-center tracking-widest text-lg font-mono text-white">
+          <button onclick="verifyOtpCode()" class="w-full py-3.5 rounded-xl bg-emerald-600 text-white font-black text-xs">تأكيد الرمز ✅</button>
         </div>
 
-        <!-- الخطوة 3: إنشاء كلمة المرور واسم الطالب -->
         <div id="step-password" class="glass-card p-6 rounded-3xl space-y-4 hidden">
-          <div>
-            <label class="block text-xs font-bold text-slate-300 mb-1">اسمك الكامل:</label>
-            <input type="text" id="input-name" placeholder="أحمد محمد" class="w-full p-3 rounded-xl bg-slate-900 border border-slate-700 text-xs text-white focus:outline-none">
-          </div>
-          <div>
-            <label class="block text-xs font-bold text-slate-300 mb-1">أنشئ كلمة مرور خاصة بك:</label>
-            <input type="password" id="input-password" placeholder="••••••••" class="w-full p-3 rounded-xl bg-slate-900 border border-slate-700 text-xs text-white focus:outline-none">
-          </div>
-          <button onclick="completeRegistration()" class="w-full py-3.5 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white font-black text-xs shadow-lg">حفظ ودخول المنصة 🚀</button>
+          <input type="text" id="input-name" placeholder="اسمك الكامل (مثال: أحمد)" class="w-full p-3 rounded-xl bg-slate-900 border border-slate-700 text-xs text-white">
+          <input type="password" id="input-password" placeholder="كلمة المرور الخاصة بك" class="w-full p-3 rounded-xl bg-slate-900 border border-slate-700 text-xs text-white">
+          <button onclick="completeRegistration()" class="w-full py-3.5 rounded-xl bg-indigo-600 text-white font-black text-xs">حفظ ودخول المنصة 🚀</button>
         </div>
 
-        <!-- تسجيل دخول الأدمن -->
         <div id="step-admin-login" class="glass-card p-6 rounded-3xl space-y-4 hidden">
-          <h3 class="text-sm font-black text-amber-400">⚙️ تسجيل دخول الأدمن (المشرف)</h3>
-          <div>
-            <label class="block text-xs font-bold text-slate-300 mb-1">اسم المستخدم:</label>
-            <input type="text" id="admin-user-input" value="admin" class="w-full p-3 rounded-xl bg-slate-900 border border-slate-700 text-xs text-white">
-          </div>
-          <div>
-            <label class="block text-xs font-bold text-slate-300 mb-1">كلمة المرور الخاصة:</label>
-            <input type="password" id="admin-pass-input" placeholder="أدخل كلمة المرور" class="w-full p-3 rounded-xl bg-slate-900 border border-slate-700 text-xs text-white">
-          </div>
-          <button onclick="submitAdminLogin()" class="w-full py-3.5 rounded-xl bg-amber-600 hover:bg-amber-500 text-slate-950 font-black text-xs">دخول لوحة التحكم 🔓</button>
+          <h3 class="text-sm font-black text-amber-400">⚙️ تسجيل دخول الأدمن</h3>
+          <input type="text" id="admin-user-input" value="admin" class="w-full p-3 rounded-xl bg-slate-900 border border-slate-700 text-xs text-white">
+          <input type="password" id="admin-pass-input" placeholder="كلمة المرور" class="w-full p-3 rounded-xl bg-slate-900 border border-slate-700 text-xs text-white">
+          <button onclick="submitAdminLogin()" class="w-full py-3.5 rounded-xl bg-amber-600 text-slate-950 font-black text-xs">دخول لوحة التحكم 🔓</button>
           <div class="text-center pt-2">
             <button onclick="showPhoneLogin()" class="text-indigo-400 text-xs font-bold underline">العودة لتسجيل الطلاب 📱</button>
           </div>
         </div>
-
       </div>
 
-      <!-- TAB 4: ADMIN PANEL (لوحة التحكم الخاصة بك) -->
+      <!-- ADMIN PANEL -->
       <div id="tab-admin" class="space-y-6 hidden">
         <div class="flex items-center justify-between border-b border-slate-800 pb-4">
-          <h3 class="text-xl font-black text-amber-400">⚙️ لوحة تحكم الأدمن الخاصة بك</h3>
-          <button onclick="logoutUser()" class="px-3 py-1.5 rounded-xl bg-rose-500/20 text-rose-400 text-xs font-bold">خروج من الأدمن</button>
+          <h3 class="text-xl font-black text-amber-400">⚙️ لوحة تحكم الأدمن الحقيقية</h3>
+          <button onclick="logoutUser()" class="px-3 py-1.5 rounded-xl bg-rose-500/20 text-rose-400 text-xs font-bold">خروج</button>
         </div>
 
         <div class="grid grid-cols-2 gap-4">
           <div class="p-5 rounded-3xl glass-card space-y-1">
-            <span class="text-xs text-slate-400">إجمالي الطلاب</span>
-            <h3 class="text-2xl font-black text-indigo-400" id="stat-students">50,250</h3>
+            <span class="text-xs text-slate-400">إجمالي الطلاب المسجلين حقيقياً</span>
+            <h3 class="text-3xl font-black text-indigo-400" id="stat-students">0</h3>
           </div>
           <div class="p-5 rounded-3xl glass-card space-y-1">
             <span class="text-xs text-slate-400">عدد الكتب</span>
-            <h3 class="text-2xl font-black text-emerald-400" id="stat-books">1</h3>
+            <h3 class="text-3xl font-black text-emerald-400" id="stat-books">1</h3>
           </div>
         </div>
 
-        <!-- إضافة كتاب جديد -->
         <div class="glass-card p-6 rounded-3xl space-y-4">
-          <h4 class="text-sm font-black text-white">➕ إضافة كتاب أو ملزمة جديدة للمنصة</h4>
+          <h4 class="text-sm font-black text-white">➕ إضافة كتاب جديد للمنصة</h4>
           <form onsubmit="addNewBook(event)" class="space-y-3">
             <input type="text" id="new-title" required placeholder="عنوان الكتاب (مثال: الفيزياء الثالث متوسط)" class="w-full p-3 rounded-xl bg-slate-900 border border-slate-700 text-xs text-white">
-            <input type="text" id="new-subject" required placeholder="المادة (فيزياء، رياضيات...)" class="w-full p-3 rounded-xl bg-slate-900 border border-slate-700 text-xs text-white">
-            <input type="url" id="new-pdf" required placeholder="رابط ملف الـ PDF المباشر" class="w-full p-3 rounded-xl bg-slate-900 border border-slate-700 text-xs text-white">
+            <input type="text" id="new-subject" required placeholder="المادة" class="w-full p-3 rounded-xl bg-slate-900 border border-slate-700 text-xs text-white">
+            <input type="url" id="new-pdf" required placeholder="رابط ملف الـ PDF" class="w-full p-3 rounded-xl bg-slate-900 border border-slate-700 text-xs text-white">
             <textarea id="new-desc" placeholder="وصف الكتاب..." class="w-full p-3 rounded-xl bg-slate-900 border border-slate-700 text-xs text-white h-20"></textarea>
-            <button type="submit" class="w-full py-3 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white font-black text-xs">رفع الكتاب 🚀</button>
+            <button type="submit" class="w-full py-3 rounded-xl bg-indigo-600 text-white font-black text-xs">رفع الكتاب 🚀</button>
           </form>
         </div>
 
         <div class="glass-card p-6 rounded-3xl space-y-3">
-          <h4 class="text-sm font-black text-white">🗑️ إدارة وحذف الكتب</h4>
+          <h4 class="text-sm font-black text-white">🗑️ إدارة الكتب</h4>
           <div id="admin-books-list" class="space-y-2"></div>
         </div>
       </div>
@@ -290,8 +268,14 @@ app.get('*', (req, res) => {
     let tempPhone = "";
 
     async function loadData() {
-      const res = await fetch('/api/books');
-      books = await res.json();
+      const resBooks = await fetch('/api/books');
+      books = await resBooks.json();
+      
+      const resStats = await fetch('/api/stats');
+      const stats = await resStats.json();
+      document.getElementById('stat-students').innerText = stats.studentsCount;
+      document.getElementById('stat-books').innerText = stats.booksCount;
+
       renderBooks();
     }
 
@@ -302,8 +286,7 @@ app.get('*', (req, res) => {
         const nav = document.getElementById('nav-' + t);
         if(nav) nav.className = "flex items-center gap-3 px-4 py-3 rounded-2xl text-slate-300 hover:bg-slate-900 transition";
       });
-      const target = document.getElementById('tab-' + tabId);
-      if(target) target.classList.remove('hidden');
+      document.getElementById('tab-' + tabId).classList.remove('hidden');
       const activeNav = document.getElementById('nav-' + tabId);
       if(activeNav) activeNav.className = "flex items-center gap-3 px-4 py-3 rounded-2xl bg-indigo-600 text-white shadow-lg transition";
     }
@@ -334,52 +317,49 @@ app.get('*', (req, res) => {
           <button onclick="deleteBook('\${b.id}')" class="px-3 py-1 rounded bg-rose-600 text-white">حذف 🗑️</button>
         </div>
       \`).join('');
-
-      document.getElementById('stat-books').innerText = books.length;
     }
 
-    // دوال التسجيل بالهاتف والـ OTP
     function sendOtpCode() {
       const phone = document.getElementById('input-phone').value;
-      if(!phone || phone.length < 10) {
-        alert('الرجاء إدخال رقم هاتف صحيح!');
-        return;
-      }
+      if(!phone || phone.length < 10) { alert('أدخل رقم هاتف صحيح!'); return; }
       tempPhone = phone;
       generatedOtp = Math.floor(1000 + Math.random() * 9000).toString();
       document.getElementById('actual-otp').innerText = generatedOtp;
-      
       document.getElementById('step-phone').classList.add('hidden');
       document.getElementById('step-otp').classList.remove('hidden');
     }
 
     function verifyOtpCode() {
-      const enteredOtp = document.getElementById('input-otp').value;
-      if(enteredOtp === generatedOtp) {
+      if(document.getElementById('input-otp').value === generatedOtp) {
         document.getElementById('step-otp').classList.add('hidden');
         document.getElementById('step-password').classList.remove('hidden');
-      } else {
-        alert('رمز التحقق غير صحيح! حاول مرة أخرى.');
-      }
+      } else { alert('رمز التحقق خاطئ!'); }
     }
 
-    function completeRegistration() {
+    async function completeRegistration() {
       const name = document.getElementById('input-name').value;
-      const pass = document.getElementById('input-password').value;
-      if(!name || !pass) {
-        alert('الرجاء إكمال الاسم وكلمة المرور!');
-        return;
+      const password = document.getElementById('input-password').value;
+      if(!name || !password) { alert('أكمل الحقول!'); return; }
+
+      const res = await fetch('/api/student/register', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ name, phone: tempPhone, password })
+      });
+      const data = await res.json();
+      if(data.success) {
+        localStorage.setItem('talabati_user', JSON.stringify({ name, role: 'student' }));
+        document.getElementById('sidebar-user-name').innerText = name;
+        document.getElementById('sidebar-user-role').innerText = 'طالب';
+        document.getElementById('sidebar-user-initial').innerText = name.charAt(0);
+        alert('🎉 تم التسجيل وحفظ حسابك بنجاح!');
+        switchTab('home');
+        loadData();
+      } else {
+        alert(data.message);
       }
-      localStorage.setItem('talabati_user', JSON.stringify({ name, phone: tempPhone, role: 'student' }));
-      document.getElementById('sidebar-user-name').innerText = name;
-      document.getElementById('sidebar-user-role').innerText = 'طالب';
-      document.getElementById('sidebar-user-initial').innerText = name.charAt(0);
-      
-      alert('🌟 تم إنشاء الحساب بنجاح، أهلاً بك يا ' + name + '!');
-      switchTab('home');
     }
 
-    // دوال دخول الأدمن
     function showAdminLogin() {
       document.getElementById('step-phone').classList.add('hidden');
       document.getElementById('step-admin-login').classList.remove('hidden');
@@ -392,7 +372,6 @@ app.get('*', (req, res) => {
     async function submitAdminLogin() {
       const username = document.getElementById('admin-user-input').value;
       const password = document.getElementById('admin-pass-input').value;
-
       const res = await fetch('/api/admin/login', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -403,10 +382,11 @@ app.get('*', (req, res) => {
         localStorage.setItem('talabati_user', JSON.stringify({ name: 'المشرف أحمد', role: 'admin' }));
         document.getElementById('sidebar-user-name').innerText = 'المشرف أحمد';
         document.getElementById('sidebar-user-role').innerText = 'أدمن ⚙️';
-        alert('✅ تم تسجيل دخول لوحة التحكم بنجاح!');
+        alert('✅ مرحباً بك في لوحة التحكم');
         switchTab('admin');
+        loadData();
       } else {
-        alert('❌ ' + data.message);
+        alert(data.message);
       }
     }
 
@@ -416,7 +396,6 @@ app.get('*', (req, res) => {
       const subject = document.getElementById('new-subject').value;
       const pdfUrl = document.getElementById('new-pdf').value;
       const desc = document.getElementById('new-desc').value;
-
       const res = await fetch('/api/admin/add-book', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -427,22 +406,19 @@ app.get('*', (req, res) => {
         books = data.books;
         renderBooks();
         e.target.reset();
-        alert('✅ تم رفع الكتاب بنجاح!');
+        alert('✅ تمت الإضافة بنجاح');
       }
     }
 
     async function deleteBook(id) {
-      if(!confirm('هل أنت متأكد من الحذف؟')) return;
+      if(!confirm('متأكد من الحذف؟')) return;
       const res = await fetch('/api/admin/delete-book', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ bookId: id })
       });
       const data = await res.json();
-      if(data.success) {
-        books = data.books;
-        renderBooks();
-      }
+      if(data.success) { books = data.books; renderBooks(); }
     }
 
     function logoutUser() {
@@ -450,15 +426,11 @@ app.get('*', (req, res) => {
       location.reload();
     }
 
-    // التحقق عند الإقلاع
     const savedUser = JSON.parse(localStorage.getItem('talabati_user') || 'null');
     if(savedUser) {
       document.getElementById('sidebar-user-name').innerText = savedUser.name;
       document.getElementById('sidebar-user-role').innerText = savedUser.role === 'admin' ? 'أدمن ⚙️' : 'طالب';
       document.getElementById('sidebar-user-initial').innerText = savedUser.name.charAt(0);
-      if(savedUser.role === 'admin') {
-        // يمكنه الوصول للأدمن مباشرة
-      }
     } else {
       switchTab('login');
     }
