@@ -1,171 +1,330 @@
-اسم التطبيق:
-طلبتي
+// Talabti Backend Server
+// منصة طلبتي التعليمية العراقية
 
-النوع:
-منصة تعليمية عراقية شاملة
+const express = require("express");
+const mongoose = require("mongoose");
+const cors = require("cors");
+const dotenv = require("dotenv");
 
-المنصات:
-- Android
-- iOS
-- Web PWA
+dotenv.config();
 
-المستخدمون:
-1- الطالب
-2- الأدمن الرئيسي
-3- المشرفون (اختياري)
-Talabti App
+const app = express();
 
-├── Splash Screen
-├── Login/Register
-├── Student Dashboard
-├── Educational Sections
-├── Subjects
-├── Years Archive
-├── Exams
-├── AI Assistant
-├── Payments
-├── Profile
-└── Notifications
+app.use(cors());
+app.use(express.json());
+
+// =========================
+// Database Connection
+// =========================
+
+mongoose.connect(process.env.MONGO_URI)
+.then(() => console.log("MongoDB Connected"))
+.catch(err => console.log(err));
 
 
-Talabti Admin Panel
+// =========================
+// Student Model
+// =========================
 
-├── Admin Login
-├── Dashboard
-├── Students Management
-├── Stages Management
-├── Subjects Management
-├── Content Management
-├── Exams Management
-├── Payments Management
-├── AI Settings
-└── App Settings
-Student {
- id
- phone_number
- verification_code
- full_name
- gender
- governorate
- password
- profile_image
- register_date
- status
+const StudentSchema = new mongoose.Schema({
+
+    phone_number:{
+        type:String,
+        required:true,
+        unique:true
+    },
+
+    full_name:String,
+
+    gender:{
+        type:String,
+        enum:["Male","Female"]
+    },
+
+    governorate:String,
+
+    password:String,
+
+    profile_image:String,
+
+    stage:String,
+
+    register_date:{
+        type:Date,
+        default:Date.now
+    },
+
+    status:{
+        type:String,
+        default:"active"
+    }
+
+});
+
+
+const Student = mongoose.model("Student", StudentSchema);
+
+
+// =========================
+// Subject Model
+// =========================
+
+const SubjectSchema = new mongoose.Schema({
+
+    name:String,
+
+    stage:String,
+
+    branch:String,
+
+    price:{
+        type:Number,
+        default:10000
+    },
+
+    status:{
+        type:Boolean,
+        default:true
+    }
+
+});
+
+
+const Subject = mongoose.model("Subject", SubjectSchema);
+
+
+// =========================
+// Content Model
+// =========================
+
+const ContentSchema = new mongoose.Schema({
+
+    subject_id:String,
+
+    year:{
+        type:Number,
+        min:2012,
+        max:2026
+    },
+
+    type:{
+        type:String,
+        enum:[
+            "مرشحات",
+            "اسئلة وزارية",
+            "حلول",
+            "ملخصات",
+            "فيديو",
+            "PDF"
+        ]
+    },
+
+    title:String,
+
+    file:String,
+
+    description:String
+
+});
+
+
+const Content = mongoose.model("Content", ContentSchema);
+
+
+// =========================
+// Subscription Model
+// =========================
+
+const SubscriptionSchema = new mongoose.Schema({
+
+    student_id:String,
+
+    subject_id:String,
+
+    payment_method:{
+        type:String,
+        enum:[
+            "رافدين",
+            "رشيد",
+            "زين كاش"
+        ]
+    },
+
+    amount:{
+        type:Number,
+        default:10000
+    },
+
+    status:{
+        type:String,
+        default:"Pending"
+    },
+
+    date:{
+        type:Date,
+        default:Date.now
+    }
+
+});
+
+
+const Subscription = mongoose.model(
+"Subscription",
+SubscriptionSchema
+);
+
+
+// =========================
+// Student Register
+// =========================
+
+app.post("/api/register", async(req,res)=>{
+
+try{
+
+const student=new Student(req.body);
+
+await student.save();
+
+res.json({
+message:"تم إنشاء الحساب بنجاح",
+student
+});
+
+
+}catch(error){
+
+res.status(500).json({
+error:error.message
+});
+
 }
-Male
-Female
-بغداد
-نينوى
-البصرة
-أربيل
-كربلاء
-النجف
-الأنبار
-صلاح الدين
-ديالى
-واسط
-ميسان
-ذي قار
-المثنى
-القادسية
-بابل
-كركوك
-Stages
 
-1- السادس الإعدادي
-   ├── علمي
-   ├── أحيائي
-   ├── تطبيقي
-   ├── أدبي
-   └── مهني
+});
 
-2- الثالث المتوسط
 
-3- السادس الابتدائي
-Subject {
+// =========================
+// Get Subjects
+// =========================
 
-id
+app.get("/api/subjects", async(req,res)=>{
 
-name
+const subjects=await Subject.find();
 
-stage_id
+res.json(subjects);
 
-branch
+});
 
-price
 
-status
+// =========================
+// Add Content
+// =========================
 
-created_date
+app.post("/api/content", async(req,res)=>{
 
-}
-رياضيات
-السادس العلمي
-السعر:
-10000 IQD
-Content {
+const content=new Content(req.body);
 
-id
+await content.save();
 
-subject_id
+res.json({
+message:"تم إضافة المحتوى",
+content
+});
 
-year
+});
 
-type
 
-title
+// =========================
+// Get Content By Year
+// =========================
 
-file
+app.get("/api/content/:subject/:year",
+async(req,res)=>{
 
-description
 
-}
-2012
-2013
-2014
-2015
-2016
-2017
-2018
-2019
-2020
-2021
-2022
-2023
-2024
-2025
-2026
-- مرشحات
-- أسئلة وزارية
-- حلول
-- ملخصات
-- فيديو
-- PDF
-السادس العلمي
-كيمياء
-2026
+const data=await Content.find({
 
-- أهم المرشحات
-- الأسئلة المتوقعة
-- الحلول
-Subscription {
+subject_id:req.params.subject,
 
-id
+year:req.params.year
 
-student_id
+});
 
-subject_id
 
-payment_method
+res.json(data);
 
-amount
 
-status
+});
 
-date
 
-}
-10000 دينار عراقي
-Pending
-Approved
-Expired
+// =========================
+// Payment
+// =========================
+
+app.post("/api/payment",
+async(req,res)=>{
+
+
+const payment=new Subscription(req.body);
+
+await payment.save();
+
+
+res.json({
+
+message:"تم إرسال طلب الدفع",
+status:"Pending"
+
+});
+
+
+});
+
+
+// =========================
+// Admin Dashboard
+// =========================
+
+app.get("/api/admin/statistics",
+async(req,res)=>{
+
+
+const students=
+await Student.countDocuments();
+
+
+const subjects=
+await Subject.countDocuments();
+
+
+const payments=
+await Subscription.countDocuments();
+
+
+res.json({
+
+students,
+subjects,
+payments
+
+});
+
+
+});
+
+
+// =========================
+// Server Start
+// =========================
+
+const PORT =
+process.env.PORT || 5000;
+
+
+app.listen(PORT,()=>{
+
+console.log(
+`Talabti Server Running On ${PORT}`
+);
+
+});
