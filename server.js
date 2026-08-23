@@ -6,15 +6,20 @@ const app = express();
 app.use(express.json());
 app.use(cors());
 
-const PORT = process.env.PORT || 3000;
 const MONGO_URI = process.env.MONGO_URI;
 
-// الاتصال بقاعدة البيانات
-mongoose.connect(MONGO_URI)
-  .then(() => console.log('✅ تم الاتصال بقاعدة بيانات MongoDB Atlas بنجاح!'))
-  .catch((err) => console.error('❌ خطأ في الاتصال بقاعدة البيانات:', err.message));
-
-// --- 1. نماذج قاعدة البيانات (Schemas) ---
+// دالة اتصال آمنة ومستقرة لبيئة Vercel
+let isConnected = false;
+async function connectDB() {
+  if (isConnected) return;
+  try {
+    await mongoose.connect(MONGO_URI);
+    isConnected = true;
+    console.log('✅ تم الاتصال بقاعدة بيانات MongoDB Atlas بنجاح!');
+  } catch (err) {
+    console.error('❌ خطأ في الاتصال بقاعدة البيانات:', err.message);
+  }
+}
 
 // نموذج المستخدمين والتحقق
 const UserSchema = new mongoose.Schema({
@@ -22,7 +27,7 @@ const UserSchema = new mongoose.Schema({
   verificationCode: String,
   createdAt: { type: Date, default: Date.now }
 });
-const User = mongoose.model('User', UserSchema);
+const User = mongoose.models.User || mongoose.model('User', UserSchema);
 
 // نموذج الكتب
 const BookSchema = new mongoose.Schema({
@@ -36,7 +41,7 @@ const BookSchema = new mongoose.Schema({
   downloads: { type: Number, default: 0 },
   createdAt: { type: Date, default: Date.now }
 });
-const Book = mongoose.model('Book', BookSchema);
+const Book = mongoose.models.Book || mongoose.model('Book', BookSchema);
 
 // نموذج المرشحات الوزارية
 const FilterSchema = new mongoose.Schema({
@@ -45,12 +50,19 @@ const FilterSchema = new mongoose.Schema({
   year: String,
   createdAt: { type: Date, default: Date.now }
 });
-const Filter = mongoose.model('Filter', FilterSchema);
+const Filter = mongoose.models.Filter || mongoose.model('Filter', FilterSchema);
 
 
-// --- 2. مسارات المصادقة (Authentication) ---
+// صفحة الترحيب الرئيسية
+app.get('/', async (req, res) => {
+  await connectDB();
+  res.json({ message: 'أهلاً بك في منصة طلبتي - Talabe API تعمل بنجاح!' });
+});
+
+// مسارات المصادقة
 app.post('/api/send-code', async (req, res) => {
   try {
+    await connectDB();
     const { phone } = req.body;
     const code = Math.floor(1000 + Math.random() * 9000).toString();
     await User.findOneAndUpdate({ phone }, { verificationCode: code }, { upsert: true, new: true });
@@ -62,6 +74,7 @@ app.post('/api/send-code', async (req, res) => {
 
 app.post('/api/verify-code', async (req, res) => {
   try {
+    await connectDB();
     const { phone, code } = req.body;
     const user = await User.findOne({ phone });
     if (user && user.verificationCode === code) {
@@ -74,11 +87,10 @@ app.post('/api/verify-code', async (req, res) => {
   }
 });
 
-
-// --- 3. مسارات الكتب (Books API) ---
-// جلب كل الكتب
+// مسارات الكتب
 app.get('/api/books', async (req, res) => {
   try {
+    await connectDB();
     const books = await Book.find().sort({ createdAt: -1 });
     res.json({ success: true, books });
   } catch (err) {
@@ -86,9 +98,9 @@ app.get('/api/books', async (req, res) => {
   }
 });
 
-// إضافة كتاب جديد (من لوحة التحكم)
 app.post('/api/books', async (req, res) => {
   try {
+    await connectDB();
     const newBook = new Book(req.body);
     await newBook.save();
     res.json({ success: true, message: 'تم إضافة الكتاب بنجاح', book: newBook });
@@ -97,10 +109,10 @@ app.post('/api/books', async (req, res) => {
   }
 });
 
-
-// --- 4. مسارات المرشحات (Filters API) ---
+// مسارات المرشحات
 app.get('/api/filters', async (req, res) => {
   try {
+    await connectDB();
     const filters = await Filter.find().sort({ createdAt: -1 });
     res.json({ success: true, filters });
   } catch (err) {
@@ -110,6 +122,7 @@ app.get('/api/filters', async (req, res) => {
 
 app.post('/api/filters', async (req, res) => {
   try {
+    await connectDB();
     const newFilter = new Filter(req.body);
     await newFilter.save();
     res.json({ success: true, message: 'تم إضافة المرشح بنجاح', filter: newFilter });
@@ -118,10 +131,10 @@ app.post('/api/filters', async (req, res) => {
   }
 });
 
-
-// --- 5. مسارات لوحة التحكم (Admin Stats API) ---
+// إحصائيات لوحة التحكم
 app.get('/api/admin/stats', async (req, res) => {
   try {
+    await connectDB();
     const totalStudents = await User.countDocuments();
     const totalBooks = await Book.countDocuments();
     const totalFilters = await Filter.countDocuments();
@@ -129,7 +142,7 @@ app.get('/api/admin/stats', async (req, res) => {
     res.json({
       success: true,
       stats: {
-        students: totalStudents + 50250, // دمج العدد الافتراضي مع المسجلين
+        students: totalStudents + 50250,
         books: totalBooks,
         filters: totalFilters + 120,
         sales: "125,500"
@@ -140,6 +153,5 @@ app.get('/api/admin/stats', async (req, res) => {
   }
 });
 
-app.listen(PORT, () => {
-  console.log(`🚀 السيرفر يعمل الآن على البورت: ${PORT}`);
-});
+// تصدير السيرفر ليعمل على Vercel Serverless
+module.exports = app;
