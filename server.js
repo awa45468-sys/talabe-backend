@@ -635,13 +635,11 @@ app.post('/api/orders', async (req, res) => {
       }]);
     } catch (e) {}
   }
-
   res.json({
     success: true,
     message: 'تم إرسال طلبك ورقم الحوالة بنجاح! سيتم تفعيل وتحميل الكتاب لك عبر الواتساب فور التأكد من التحويل.'
   });
 });
-
 // 4. واجهة HTML المباشرة (تعمل فوراً على Vercel و GitHub دون الحاجة لمجلد dist وبدون خطأ 404)
 app.get('*', (req, res) => {
   const booksHtml = booksData.map(b => `
@@ -656,8 +654,7 @@ app.get('*', (req, res) => {
       </div>
     </div>
   `).join('');
-
-  const html = `<!DOCTYPE html>
+  const html = `<!DOCTYPE htm1
 <html lang="ar" dir="rtl">
 <head>
   <meta charset="UTF-8">
@@ -726,7 +723,6 @@ app.get('*', (req, res) => {
       <p>منصة طلبتي التعليمية © 2026 • معتمدة لطلاب العراق 🇮🇶</p>
     </footer>
   </div>
-
   <!-- Checkout Modal -->
   <div class="modal-overlay" id="checkoutModal">
     <div class="modal">
@@ -734,7 +730,6 @@ app.get('*', (req, res) => {
         <h3 id="modalBookTitle">طلب تفعيل الملزمة</h3>
         <button class="btn-close" onclick="closeModal()">✕</button>
       </div>
-
       <div class="pay-box">
         <div style="font-weight:bold; color:#a5b4fc; margin-bottom:8px;">💳 حسابات الدفع المعتمدة (المبلغ: 10,000 د.ع):</div>
         <div class="pay-row">
@@ -754,7 +749,6 @@ app.get('*', (req, res) => {
           <span class="pay-num">${PAYMENT_INFO.asiaHawala}</span>
         </div>
       </div>
-
       <form id="orderForm" onsubmit="submitOrder(event)">
         <input type="hidden" id="bookTitleInput" name="book_title">
         <div class="form-group">
@@ -788,13 +782,11 @@ app.get('*', (req, res) => {
       </form>
     </div>
   </div>
-
   <script>
     function openModal(bookTitle) {
       document.getElementById('modalBookTitle').innerText = 'تفعيل ' + bookTitle;
       document.getElementById('bookTitleInput').value = bookTitle;
       document.getElementById('checkoutModal').style.display = 'flex';
-    }
     function closeModal() {
       document.getElementById('checkoutModal').style.display = 'none';
     }
