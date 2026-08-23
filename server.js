@@ -1,13 +1,52 @@
 // ==============================================================================================
-// 🎓 منصة طلبتي التعليمية - نظام التسجيل وقاعدة البيانات الحقيقية على السيرفر (2026)
+// 🎓 منصة طلبتي التعليمية - نظام التخزين الدائم للبيانات (2026)
 // ==============================================================================================
 
 const express = require('express');
+const fs = require('fs');
+const path = require('path');
 const app = express();
 const PORT = process.env.PORT || 3000;
 
 app.use(express.json({ limit: '50mb' }));
 app.use(express.urlencoded({ extended: true, limit: '50mb' }));
+
+// ملف تخزين البيانات الدائم على السيرفر
+const DB_FILE = path.join(__dirname, 'database.json');
+
+// دالة قراءة البيانات
+function readDB() {
+  if (!fs.existsSync(DB_FILE)) {
+    const initialData = {
+      students: [],
+      books: [
+        {
+          id: "book-1",
+          title: "الرياضيات - الثالث متوسط",
+          subject: "الرياضيات",
+          grade: "الثالث متوسط",
+          year: "2026",
+          author: "وزارة التربية / لجنة طلبتي",
+          pages: "320 صفحة",
+          size: "25 MB",
+          rating: "4.9",
+          desc: "الملزمة الشاملة لفصول الهندسة والمثلثات والمنشآت مع الأسئلة الوزارية.",
+          badge: "الأعلى طلباً ⭐",
+          cover: "https://images.unsplash.com/photo-1543269865-cbf427effbad?w=500&auto=format&fit=crop&q=60",
+          pdfUrl: "https://www.w3.org/WAI/ER/tests/xhtml/testfiles/resources/pdf/dummy.pdf"
+        }
+      ],
+      activities: [{ text: "تم تفعيل نظام التخزين الدائم بنجاح", time: "الآن" }]
+    };
+    fs.writeFileSync(DB_FILE, JSON.stringify(initialData, null, 2));
+  }
+  return JSON.parse(fs.readFileSync(DB_FILE, 'utf8'));
+}
+
+// دالة كتابة وحفظ البيانات
+function writeDB(data) {
+  fs.writeFileSync(DB_FILE, JSON.stringify(data, null, 2));
+}
 
 // 📱 ملف مانيفست الـ PWA
 app.get('/manifest.json', (req, res) => {
@@ -26,61 +65,38 @@ app.get('/manifest.json', (req, res) => {
   });
 });
 
-// 🗄️ قواعد البيانات الحقيقية على السيرفر
-let STUDENTS_DATABASE = []; // سيتم تخزين الطلاب المسجلين هنا حقيقياً
-
-let BOOKS_DATABASE = [
-  {
-    id: "book-1",
-    title: "الرياضيات - الثالث متوسط",
-    subject: "الرياضيات",
-    grade: "الثالث متوسط",
-    year: "2026",
-    author: "وزارة التربية / لجنة طلبتي",
-    pages: "320 صفحة",
-    size: "25 MB",
-    rating: "4.9",
-    desc: "الملزمة الشاملة لفصول الهندسة والمثلثات والمنشآت مع الأسئلة الوزارية.",
-    badge: "الأعلى طلباً ⭐",
-    cover: "https://images.unsplash.com/photo-1543269865-cbf427effbad?w=500&auto=format&fit=crop&q=60",
-    pdfUrl: "https://www.w3.org/WAI/ER/tests/xhtml/testfiles/resources/pdf/dummy.pdf"
-  }
-];
-
-let ACTIVITIES = [
-  { text: "تم تحديث المنصة وتفعيل قاعدة بيانات الطلاب الحقيقية", time: "الآن" }
-];
-
 // API Endpoints
-app.get('/api/books', (req, res) => res.json(BOOKS_DATABASE));
+app.get('/api/books', (req, res) => {
+  const db = readDB();
+  res.json(db.books);
+});
 
-// إرسال الإحصائيات الحقيقية تماماً للأدمن
 app.get('/api/stats', (req, res) => {
+  const db = readDB();
   res.json({
-    studentsCount: STUDENTS_DATABASE.length, // العدد الحقيقي للطلاب المسجلين
-    booksCount: BOOKS_DATABASE.length,
-    activities: ACTIVITIES
+    studentsCount: db.students.length,
+    booksCount: db.books.length,
+    activities: db.activities
   });
 });
 
-// تسجيل طالب جديد وحفظه في قاعدة البيانات
 app.post('/api/student/register', (req, res) => {
   const { name, phone, password } = req.body;
+  const db = readDB();
   
-  // التحقق إن كان رقم الهاتف مسجلاً مسبقاً
-  const existing = STUDENTS_DATABASE.find(s => s.phone === phone);
+  const existing = db.students.find(s => s.phone === phone);
   if(existing) {
     return res.json({ success: false, message: "رقم الهاتف هذا مسجل مسبقاً، سجل دخولك مباشرة!" });
   }
 
   const newStudent = { id: 'stu-' + Date.now(), name, phone, password, joinedAt: new Date().toLocaleString() };
-  STUDENTS_DATABASE.push(newStudent);
-  ACTIVITIES.unshift({ text: `انضم طالب جديد: ${name}`, time: "الآن" });
-
+  db.students.push(newStudent);
+  db.activities.unshift({ text: `انضم طالب جديد: ${name}`, time: "الآن" });
+  
+  writeDB(db);
   res.json({ success: true, student: { name: newStudent.name, phone: newStudent.phone } });
 });
 
-// Admin Authentication API
 app.post('/api/admin/login', (req, res) => {
   const { username, password } = req.body;
   if (username === "admin" && password === "ahmad_admin_2026") {
@@ -92,6 +108,8 @@ app.post('/api/admin/login', (req, res) => {
 
 app.post('/api/admin/add-book', (req, res) => {
   const { title, subject, pdfUrl, desc } = req.body;
+  const db = readDB();
+  
   const newBook = {
     id: 'book-' + Date.now(),
     title: title || "كتاب جديد",
@@ -104,15 +122,21 @@ app.post('/api/admin/add-book', (req, res) => {
     cover: "https://images.unsplash.com/photo-1543269865-cbf427effbad?w=500&auto=format&fit=crop&q=60",
     pdfUrl: pdfUrl || "https://www.w3.org/WAI/ER/tests/xhtml/testfiles/resources/pdf/dummy.pdf"
   };
-  BOOKS_DATABASE.unshift(newBook);
-  ACTIVITIES.unshift({ text: `تم إضافة كتاب: ${newBook.title}`, time: "الآن" });
-  res.json({ success: true, books: BOOKS_DATABASE });
+  db.books.unshift(newBook);
+  db.activities.unshift({ text: `تم إضافة كتاب: ${newBook.title}`, time: "الآن" });
+  
+  writeDB(db);
+  res.json({ success: true, books: db.books });
 });
 
 app.post('/api/admin/delete-book', (req, res) => {
   const { bookId } = req.body;
-  BOOKS_DATABASE = BOOKS_DATABASE.filter(b => b.id !== bookId);
-  res.json({ success: true, books: BOOKS_DATABASE });
+  const db = readDB();
+  
+  db.books = db.books.filter(b => b.id !== bookId);
+  writeDB(db);
+  
+  res.json({ success: true, books: db.books });
 });
 
 // الواجهة الأمامية الشاملة
@@ -227,13 +251,13 @@ app.get('*', (req, res) => {
       <!-- ADMIN PANEL -->
       <div id="tab-admin" class="space-y-6 hidden">
         <div class="flex items-center justify-between border-b border-slate-800 pb-4">
-          <h3 class="text-xl font-black text-amber-400">⚙️ لوحة تحكم الأدمن الحقيقية</h3>
+          <h3 class="text-xl font-black text-amber-400">⚙️ لوحة تحكم الأدمن (بيانات دائمة)</h3>
           <button onclick="logoutUser()" class="px-3 py-1.5 rounded-xl bg-rose-500/20 text-rose-400 text-xs font-bold">خروج</button>
         </div>
 
         <div class="grid grid-cols-2 gap-4">
           <div class="p-5 rounded-3xl glass-card space-y-1">
-            <span class="text-xs text-slate-400">إجمالي الطلاب المسجلين حقيقياً</span>
+            <span class="text-xs text-slate-400">إجمالي الطلاب المسجلين دائماً</span>
             <h3 class="text-3xl font-black text-indigo-400" id="stat-students">0</h3>
           </div>
           <div class="p-5 rounded-3xl glass-card space-y-1">
@@ -352,7 +376,7 @@ app.get('*', (req, res) => {
         document.getElementById('sidebar-user-name').innerText = name;
         document.getElementById('sidebar-user-role').innerText = 'طالب';
         document.getElementById('sidebar-user-initial').innerText = name.charAt(0);
-        alert('🎉 تم التسجيل وحفظ حسابك بنجاح!');
+        alert('🎉 تم التسجيل وحفظ حسابك بشكل دائم!');
         switchTab('home');
         loadData();
       } else {
@@ -382,7 +406,7 @@ app.get('*', (req, res) => {
         localStorage.setItem('talabati_user', JSON.stringify({ name: 'المشرف أحمد', role: 'admin' }));
         document.getElementById('sidebar-user-name').innerText = 'المشرف أحمد';
         document.getElementById('sidebar-user-role').innerText = 'أدمن ⚙️';
-        alert('✅ مرحباً بك في لوحة التحكم');
+        alert('✅ مرحباً بك في لوحة التحكم الدائمة');
         switchTab('admin');
         loadData();
       } else {
@@ -406,7 +430,7 @@ app.get('*', (req, res) => {
         books = data.books;
         renderBooks();
         e.target.reset();
-        alert('✅ تمت الإضافة بنجاح');
+        alert('✅ تمت إضافة الكتاب وحفظه دائماً');
       }
     }
 
@@ -443,5 +467,5 @@ app.get('*', (req, res) => {
 });
 
 app.listen(PORT, () => {
-  console.log(`Server running on http://localhost:${PORT}`);
+  console.log(`Server running on http://localhost:${PORT} (Database: persistent JSON file)`);
 });
