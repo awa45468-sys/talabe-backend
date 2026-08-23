@@ -1,15 +1,9 @@
 const express = require('express');
-const { createClient } = require('@supabase/supabase-js');
 
 const app = express();
 app.use(express.json());
 
-// الاتصال بـ Supabase (إن وجد)
-const supabaseUrl = process.env.SUPABASE_URL || '';
-const supabaseKey = process.env.SUPABASE_ANON_KEY || '';
-const supabase = (supabaseUrl && supabaseKey) ? createClient(supabaseUrl, supabaseKey) : null;
-
-// بيانات الحسابات والتحويلات للدفعة (يمكنك تعديل الأرقام هنا)
+// بيانات الحسابات وطرق الدفع
 const PAYMENT_INFO = {
   zainCash: "07700000000",
   rafidainCard: "6280 0000 0000 0000",
@@ -17,7 +11,7 @@ const PAYMENT_INFO = {
   price: "10,000 دينار عراقي"
 };
 
-// قائمة الملازم والكتب لصف الثالث المتوسط
+// قائمة الكتب والملازم
 const booksData = [
   { id: 1, title: 'الملزمة الشاملة للاجتماعيات الوزارية', category: 'اجتماعيات', desc: 'تتضمن التاريخ، الجغرافيا، والوطنية مع حلول جميع التعاليل والخرائط والتعاريف.' },
   { id: 2, title: 'مرشحات الرياضيات - الجزء الأول', category: 'رياضيات', desc: 'حلول نموذجية وشرح مبسط لجميع الأسئلة والتمارين الوزارية المكررة.' },
@@ -32,37 +26,28 @@ const booksData = [
   { id: 11, title: 'بنك الوزاريات الشامل (جميع المواد)', category: 'شامل', desc: 'تجميع لكافة أسئلة الامتحانات الوزارية للسنوات السابقة مع أجوبتها النموذجية.' }
 ];
 
-// 1. API جلب قائمة الكتب
-app.get('/api/books', async (req, res) => {
-  if (supabase) {
-    try {
-      const { data, error } = await supabase.from('books').select('*').order('id', { ascending: true });
-      if (!error && data && data.length > 0) return res.json(data);
-    } catch (e) {}
-  }
+const memoryOrders = [];
+
+// API الكتب
+app.get('/api/books', (req, res) => {
   res.json(booksData);
 });
 
-// 2. API تسجيل طلبات الشراء والدفع
-app.post('/api/orders', async (req, res) => {
+// API الطلبات
+app.post('/api/orders', (req, res) => {
   const { student_name, phone, book_title, payment_method, transaction_ref } = req.body;
   if (!student_name || !phone || !book_title || !transaction_ref) {
     return res.status(400).json({ success: false, error: 'يرجى إكمال كافة البيانات ورقم الحوالة/الوصل.' });
   }
 
-  if (supabase) {
-    try {
-      await supabase.from('orders').insert([{
-        student_name,
-        phone,
-        book_title,
-        payment_method,
-        transaction_ref,
-        price: PAYMENT_INFO.price,
-        status: 'قيد التحقق'
-      }]);
-    } catch (e) {}
-  }
+  memoryOrders.push({
+    student_name,
+    phone,
+    book_title,
+    payment_method,
+    transaction_ref,
+    date: new Date()
+  });
 
   res.json({
     success: true,
@@ -70,8 +55,8 @@ app.post('/api/orders', async (req, res) => {
   });
 });
 
-// 3. الواجهة الرئيسية (Frontend)
-app.get('/', (req, res) => {
+// الواجهة الرئيسية
+app.get('*', (req, res) => {
   res.send(`
 <!DOCTYPE html>
 <html lang="ar" dir="rtl">
@@ -85,91 +70,40 @@ app.get('/', (req, res) => {
     :root {
       --primary-color: #4f46e5;
       --primary-dark: #3730a3;
-      --accent-color: #10b981;
       --bg-color: #f8fafc;
     }
     body { background-color: var(--bg-color); font-family: system-ui, -apple-system, sans-serif; }
-    
     .hero-banner {
       background: linear-gradient(135deg, #1e1b4b 0%, #312e81 50%, #4338ca 100%);
-      color: white;
-      padding: 55px 20px 45px;
-      border-radius: 0 0 30px 30px;
+      color: white; padding: 50px 20px 40px; border-radius: 0 0 30px 30px;
       box-shadow: 0 10px 30px rgba(49, 46, 129, 0.2);
     }
-    
     .card-book {
-      border: none;
-      border-radius: 20px;
-      background: #ffffff;
-      box-shadow: 0 4px 15px rgba(0,0,0,0.04);
-      transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-      position: relative;
-      overflow: hidden;
+      border: none; border-radius: 20px; background: #ffffff;
+      box-shadow: 0 4px 15px rgba(0,0,0,0.04); transition: all 0.3s ease;
     }
-    .card-book:hover {
-      transform: translateY(-7px);
-      box-shadow: 0 12px 28px rgba(79, 70, 229, 0.15);
-    }
-    
-    .price-tag {
-      background: #fef3c7;
-      color: #b45309;
-      font-weight: 700;
-      padding: 6px 14px;
-      border-radius: 12px;
-      font-size: 0.85rem;
-      border: 1px solid #fde68a;
-    }
-    
-    .category-tag {
-      background: #e0e7ff;
-      color: #3730a3;
-      font-weight: 600;
-      padding: 6px 12px;
-      border-radius: 12px;
-      font-size: 0.8rem;
-    }
-    
-    .btn-pay {
-      background: linear-gradient(135deg, var(--primary-color), var(--primary-dark));
-      color: white;
-      border: none;
-      border-radius: 12px;
-      padding: 12px;
-      font-weight: 700;
-      transition: 0.2s;
-    }
-    .btn-pay:hover {
-      background: linear-gradient(135deg, #4338ca, #312e81);
-      color: white;
-    }
-    
-    .pay-box {
-      background: #f1f5f9;
-      border: 2px dashed #cbd5e1;
-      border-radius: 14px;
-      padding: 15px;
-    }
-
+    .card-book:hover { transform: translateY(-5px); box-shadow: 0 12px 28px rgba(79, 70, 229, 0.15); }
+    .price-tag { background: #fef3c7; color: #b45309; font-weight: 700; padding: 6px 14px; border-radius: 12px; font-size: 0.85rem; }
+    .category-tag { background: #e0e7ff; color: #3730a3; font-weight: 600; padding: 6px 12px; border-radius: 12px; font-size: 0.8rem; }
+    .btn-pay { background: linear-gradient(135deg, var(--primary-color), var(--primary-dark)); color: white; border: none; border-radius: 12px; padding: 12px; font-weight: 700; }
+    .btn-pay:hover { color: white; opacity: 0.95; }
+    .pay-box { background: #f1f5f9; border: 2px dashed #cbd5e1; border-radius: 14px; padding: 15px; }
     .modal-content { border-radius: 24px; border: none; overflow: hidden; }
     .modal-header { background: #1e1b4b; color: white; border: none; }
   </style>
 </head>
 <body>
 
-  <!-- هيدر التطبيق -->
   <header class="hero-banner text-center mb-5">
     <div class="container">
-      <div class="d-inline-flex align-items-center justify-content-center bg-white text-dark rounded-circle mb-3 shadow" style="width: 65px; height: 65px;">
+      <div class="d-inline-flex align-items-center justify-content-center bg-white text-dark rounded-circle mb-3 shadow" style="width: 60px; height: 60px;">
         <i class="bi bi-book-half fs-2 text-primary"></i>
       </div>
       <h1 class="fw-bold mb-2">منصة تفوّق التعليمية</h1>
-      <p class="lead text-light mb-0 fs-6">المتجر الرسمي للملازم والمرشحات الوزارية المقفولة — فتح أي كتاب بـ 10,000 دينار فقط</p>
+      <p class="lead text-light mb-0 fs-6">المتجر الرسمي للملازم والمرشحات الوزارية — فتح أي كتاب بـ 10,000 دينار فقط</p>
     </div>
   </header>
 
-  <!-- قائمة الكتب -->
   <main class="container mb-5">
     <div id="loading" class="text-center py-5">
       <div class="spinner-border text-primary" style="width: 3rem; height: 3rem;" role="status"></div>
@@ -179,7 +113,6 @@ app.get('/', (req, res) => {
     <div id="books-list" class="row g-4"></div>
   </main>
 
-  <!-- نافذة التفعيل والدفع المقفولة -->
   <div class="modal fade" id="payModal" tabindex="-1">
     <div class="modal-dialog modal-dialog-centered">
       <div class="modal-content shadow-lg">
@@ -195,7 +128,6 @@ app.get('/', (req, res) => {
           <form id="paymentForm">
             <input type="hidden" id="selectedBook">
 
-            <!-- خيارات طرق الدفع -->
             <div class="mb-3">
               <label class="form-label fw-bold">اختر طريقة الدفع المناسبة لك:</label>
               <select id="paymentMethod" class="form-select form-select-lg fs-6" onchange="updatePaymentDetails()">
@@ -205,9 +137,8 @@ app.get('/', (req, res) => {
               </select>
             </div>
 
-            <!-- صندوق تفاصيل الحساب -->
             <div class="pay-box mb-4 text-center">
-              <span class="text-muted d-block small mb-1" id="payLabel">حول المبلغ (10,000 د.ع) إلى الرقم التالي:</span>
+              <span class="text-muted d-block small mb-1" id="payLabel">حول المبلغ (10,000 د.ع) لزين كاش على الرقم:</span>
               <h4 class="fw-bold text-primary mb-1" id="payAccount">${PAYMENT_INFO.zainCash}</h4>
               <small class="text-success fw-bold"><i class="bi bi-check-circle-fill me-1"></i>المبلغ المطلوب: 10,000 د.ع فقط</small>
             </div>
@@ -338,3 +269,5 @@ app.get('/', (req, res) => {
 
 const PORT = process.env.PORT || 3000;
 app.listen(PORT, () => console.log(`🚀 Server running on port ${PORT}`));
+
+module.exports = app;
