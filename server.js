@@ -8,7 +8,6 @@ app.use(cors());
 
 const MONGO_URI = process.env.MONGO_URI;
 
-// دالة اتصال آمنة ومستقرة لبيئة Vercel
 let isConnected = false;
 async function connectDB() {
   if (isConnected) return;
@@ -21,7 +20,6 @@ async function connectDB() {
   }
 }
 
-// نماذج قاعدة البيانات
 const UserSchema = new mongoose.Schema({
   phone: { type: String, required: true, unique: true },
   verificationCode: String,
@@ -41,7 +39,6 @@ const BookSchema = new mongoose.Schema({
 });
 const Book = mongoose.models.Book || mongoose.model('Book', BookSchema);
 
-// مسار عرض واجهة منصة طلبتي الاحترافية
 app.get('/', async (req, res) => {
   await connectDB();
   const bookCount = await Book.countDocuments();
@@ -100,7 +97,6 @@ app.get('/', async (req, res) => {
   `);
 });
 
-// مسار جلب الكتب
 app.get('/api/books', async (req, res) => {
   try {
     await connectDB();
@@ -111,7 +107,6 @@ app.get('/api/books', async (req, res) => {
   }
 });
 
-// تصدير السيرفر ليعمل على Vercel
 const PORT = process.env.PORT || 3000;
 if (process.env.NODE_ENV !== 'production') {
   app.listen(PORT, () => {
