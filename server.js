@@ -93,7 +93,7 @@ app.get('*', (req, res) => {
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>منصة تفوّق التعليمية | الملازم والمرشحات الوزارية 2026</title>
+  <title>منصة طلبتي التعليمية | الملازم والمرشحات الوزارية 2026</title>
   <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;600;700;900&display=swap" rel="stylesheet">
   <style>
     * { box-sizing: border-box; margin: 0; padding: 0; font-family: 'Cairo', sans-serif; }
@@ -139,7 +139,7 @@ app.get('*', (req, res) => {
 <body>
   <div class="container">
     <div class="header">
-      <h1>🎓 منصة تفوّق التعليمية</h1>
+      <h1>🎓 منصة طلبتي التعليمية</h1>
       <p>المتجر الرسمي للملازم والمرشحات الوزارية المعتمدة للصف الثالث المتوسط 2026</p>
     </div>
 
@@ -154,7 +154,7 @@ app.get('*', (req, res) => {
     </div>
 
     <footer>
-      <p>منصة تفوّق التعليمية © 2026 • معتمدة لطلاب العراق 🇮🇶</p>
+      <p>منصة طلبتي التعليمية © 2026 • معتمدة لطلاب العراق 🇮🇶</p>
     </footer>
   </div>
 
