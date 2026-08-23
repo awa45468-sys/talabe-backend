@@ -1,184 +1,163 @@
-// Talabti Backend Server
-// منصة طلبتي التعليمية العراقية
-
 const express = require("express");
 const mongoose = require("mongoose");
 const cors = require("cors");
-const dotenv = require("dotenv");
-
-dotenv.config();
+require("dotenv").config();
 
 const app = express();
 
 app.use(cors());
 app.use(express.json());
 
-// =========================
-// Database Connection
-// =========================
 
+// اتصال قاعدة البيانات
 mongoose.connect(process.env.MONGO_URI)
-.then(() => console.log("MongoDB Connected"))
-.catch(err => console.log(err));
-
-
-// =========================
-// Student Model
-// =========================
-
-const StudentSchema = new mongoose.Schema({
-
-    phone_number:{
-        type:String,
-        required:true,
-        unique:true
-    },
-
-    full_name:String,
-
-    gender:{
-        type:String,
-        enum:["Male","Female"]
-    },
-
-    governorate:String,
-
-    password:String,
-
-    profile_image:String,
-
-    stage:String,
-
-    register_date:{
-        type:Date,
-        default:Date.now
-    },
-
-    status:{
-        type:String,
-        default:"active"
-    }
-
+.then(()=>{
+    console.log("Database Connected");
+})
+.catch((error)=>{
+    console.log("Database Error:", error.message);
 });
 
 
-const Student = mongoose.model("Student", StudentSchema);
+// =======================
+// Models
+// =======================
 
 
-// =========================
-// Subject Model
-// =========================
+const Student = mongoose.model(
+"Student",
+new mongoose.Schema({
 
-const SubjectSchema = new mongoose.Schema({
+phone_number:{
+type:String,
+unique:true
+},
 
-    name:String,
+full_name:String,
 
-    stage:String,
+gender:String,
 
-    branch:String,
+governorate:String,
 
-    price:{
-        type:Number,
-        default:10000
-    },
+password:String,
 
-    status:{
-        type:Boolean,
-        default:true
-    }
+stage:String,
 
-});
+profile_image:String,
 
+status:{
+type:String,
+default:"active"
+},
 
-const Subject = mongoose.model("Subject", SubjectSchema);
+created:{
+type:Date,
+default:Date.now
+}
 
-
-// =========================
-// Content Model
-// =========================
-
-const ContentSchema = new mongoose.Schema({
-
-    subject_id:String,
-
-    year:{
-        type:Number,
-        min:2012,
-        max:2026
-    },
-
-    type:{
-        type:String,
-        enum:[
-            "مرشحات",
-            "اسئلة وزارية",
-            "حلول",
-            "ملخصات",
-            "فيديو",
-            "PDF"
-        ]
-    },
-
-    title:String,
-
-    file:String,
-
-    description:String
-
-});
+})
+);
 
 
-const Content = mongoose.model("Content", ContentSchema);
+
+const Subject = mongoose.model(
+"Subject",
+new mongoose.Schema({
+
+name:String,
+
+stage:String,
+
+branch:String,
+
+price:{
+type:Number,
+default:10000
+},
+
+status:{
+type:Boolean,
+default:true
+}
+
+})
+);
 
 
-// =========================
-// Subscription Model
-// =========================
 
-const SubscriptionSchema = new mongoose.Schema({
+const Content = mongoose.model(
+"Content",
+new mongoose.Schema({
 
-    student_id:String,
+subject_id:String,
 
-    subject_id:String,
+year:Number,
 
-    payment_method:{
-        type:String,
-        enum:[
-            "رافدين",
-            "رشيد",
-            "زين كاش"
-        ]
-    },
+type:String,
 
-    amount:{
-        type:Number,
-        default:10000
-    },
+title:String,
 
-    status:{
-        type:String,
-        default:"Pending"
-    },
+file:String,
 
-    date:{
-        type:Date,
-        default:Date.now
-    }
+description:String
 
-});
+})
+);
+
 
 
 const Subscription = mongoose.model(
 "Subscription",
-SubscriptionSchema
+new mongoose.Schema({
+
+student_id:String,
+
+subject_id:String,
+
+payment_method:String,
+
+amount:{
+type:Number,
+default:10000
+},
+
+status:{
+type:String,
+default:"Pending"
+},
+
+date:{
+type:Date,
+default:Date.now
+}
+
+})
 );
 
 
-// =========================
-// Student Register
-// =========================
 
-app.post("/api/register", async(req,res)=>{
+// =======================
+// Home
+// =======================
+
+app.get("/",(req,res)=>{
+
+res.json({
+
+app:"Talabti",
+message:"طلبتي Backend Working"
+
+});
+
+});
+
+
+
+// =======================
+// Register Student
+// =======================
+
+app.post("/api/register",async(req,res)=>{
 
 try{
 
@@ -186,16 +165,24 @@ const student=new Student(req.body);
 
 await student.save();
 
+
 res.json({
-message:"تم إنشاء الحساب بنجاح",
+
+success:true,
+
+message:"تم تسجيل الطالب",
+
 student
+
 });
 
 
 }catch(error){
 
 res.status(500).json({
+
 error:error.message
+
 });
 
 }
@@ -203,46 +190,98 @@ error:error.message
 });
 
 
-// =========================
-// Get Subjects
-// =========================
 
-app.get("/api/subjects", async(req,res)=>{
 
-const subjects=await Subject.find();
+// =======================
+// Get Students
+// =======================
+
+app.get("/api/students",
+async(req,res)=>{
+
+const data=await Student.find();
+
+res.json(data);
+
+});
+
+
+
+
+// =======================
+// Subjects
+// =======================
+
+app.post("/api/subjects",
+async(req,res)=>{
+
+const subject=new Subject(req.body);
+
+await subject.save();
+
+
+res.json({
+
+message:"تم إضافة المادة",
+
+subject
+
+});
+
+});
+
+
+
+app.get("/api/subjects",
+async(req,res)=>{
+
+const subjects=
+await Subject.find();
 
 res.json(subjects);
 
 });
 
 
-// =========================
-// Add Content
-// =========================
-
-app.post("/api/content", async(req,res)=>{
-
-const content=new Content(req.body);
-
-await content.save();
-
-res.json({
-message:"تم إضافة المحتوى",
-content
-});
-
-});
 
 
-// =========================
-// Get Content By Year
-// =========================
+// =======================
+// Content 2012-2026
+// =======================
 
-app.get("/api/content/:subject/:year",
+
+app.post("/api/content",
 async(req,res)=>{
 
 
-const data=await Content.find({
+const content=
+new Content(req.body);
+
+
+await content.save();
+
+
+res.json({
+
+message:"تم إضافة المحتوى",
+
+content
+
+});
+
+
+});
+
+
+
+
+app.get(
+"/api/content/:subject/:year",
+async(req,res)=>{
+
+
+const result=
+await Content.find({
 
 subject_id:req.params.subject,
 
@@ -251,28 +290,34 @@ year:req.params.year
 });
 
 
-res.json(data);
+res.json(result);
 
 
 });
 
 
-// =========================
-// Payment
-// =========================
+
+
+// =======================
+// Payments
+// =======================
+
 
 app.post("/api/payment",
 async(req,res)=>{
 
 
-const payment=new Subscription(req.body);
+const payment=
+new Subscription(req.body);
+
 
 await payment.save();
 
 
 res.json({
 
-message:"تم إرسال طلب الدفع",
+message:"تم إرسال الدفع",
+
 status:"Pending"
 
 });
@@ -281,11 +326,15 @@ status:"Pending"
 });
 
 
-// =========================
-// Admin Dashboard
-// =========================
 
-app.get("/api/admin/statistics",
+
+
+// =======================
+// Admin Statistics
+// =======================
+
+
+app.get("/api/admin",
 async(req,res)=>{
 
 
@@ -313,18 +362,7 @@ payments
 });
 
 
-// =========================
-// Server Start
-// =========================
-
-const PORT =
-process.env.PORT || 5000;
 
 
-app.listen(PORT,()=>{
-
-console.log(
-`Talabti Server Running On ${PORT}`
-);
-
-});
+// مهم لـ Vercel
+module.exports = app;
