@@ -49,13 +49,13 @@ app.get('/', async (req, res) => {
 
   res.send(`
     <!DOCTYPE html>
-    html lang="ar" dir="rtl">
+    <html lang="ar" dir="rtl">
     <head>
         <meta charset="UTF-8">
         <meta name="viewport" content="width=device-width, initial-scale=1.0">
         <title>منصة طلبتي - الملازم الوزارية 2026</title>
         <style>
-            body { font-family: 'Cairo', Tahoma, sans-serif; background-color: #0b0f19; color: #ffffff; margin: 0; padding: 0; direction: rtl; }
+            body { font-family: 'Tahoma', sans-serif; background-color: #0b0f19; color: #ffffff; margin: 0; padding: 0; direction: rtl; }
             .header { background: linear-gradient(135deg, #1e1b4b, #312e81); padding: 30px; text-align: center; border-bottom: 2px solid #4338ca; }
             .logo { font-size: 28px; font-weight: bold; color: #818cf8; margin-bottom: 10px; }
             .container { max-width: 900px; margin: 30px auto; padding: 20px; background: #111827; border-radius: 15px; box-shadow: 0 10px 25px rgba(0,0,0,0.5); }
@@ -106,18 +106,6 @@ app.get('/api/books', async (req, res) => {
     await connectDB();
     const books = await Book.find().sort({ createdAt: -1 });
     res.json({ success: true, count: books.length, books });
-  } catch (err) {
-    res.status(500).json({ success: false, error: err.message });
-  }
-});
-
-// مسار إضافة كتاب تجريبي
-app.post('/api/books', async (req, res) => {
-  try {
-    await connectDB();
-    const newBook = new Book(req.body);
-    await newBook.save();
-    res.json({ success: true, message: 'تم إضافة الكتاب بنجاح', book: newBook });
   } catch (err) {
     res.status(500).json({ success: false, error: err.message });
   }
