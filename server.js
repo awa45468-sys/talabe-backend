@@ -1,13 +1,6 @@
 const express = require('express');
-const { createClient } = require('@supabase/supabase-js');
-
 const app = express();
 app.use(express.json());
-
-// الاتصال بقاعدة بيانات Supabase
-const supabaseUrl = process.env.SUPABASE_URL || '';
-const supabaseKey = process.env.SUPABASE_ANON_KEY || '';
-const supabase = (supabaseUrl && supabaseKey) ? createClient(supabaseUrl, supabaseKey) : null;
 
 // معلومات الدفع والتحويل المعتمدة للمنصة
 const PAYMENT_INFO = {
@@ -34,48 +27,26 @@ const booksData = [
   { id: 11, title: 'بنك مرشحات منصة طلبتي الشامل (جميع المواد)', category: 'شامل', teacher: 'نخبة الأساتذة الأوائل', pages: '320 صفحة', desc: 'النسخة النهائية المرشحة لجميع الامتحانات الوزارية للأدوار السابقة.' }
 ];
 
-// API لجلب الملازم
-app.get('/api/books', async (req, res) => {
-  if (supabase) {
-    try {
-      const { data, error } = await supabase.from('books').select('*').order('id', { ascending: true });
-      if (!error && data && data.length > 0) return res.json(data);
-    } catch (e) {}
-  }
+// API لجلب الملازم مباشرة بدون تعقيد
+app.get('/api/books', (req, res) => {
   res.json(booksData);
 });
 
-// API لتسجيل الطلبات وعمليات الشراء
-app.post('/api/orders', async (req, res) => {
-  const { student_name, phone, book_title, payment_method, transaction_ref, governorate } = req.body;
+// API لتسجيل الطلبات
+app.post('/api/orders', (req, res) => {
+  const { student_name, phone, book_title, transaction_ref } = req.body;
   if (!student_name || !phone || !book_title || !transaction_ref) {
-    return res.status(400).json({ success: false, error: 'يرجى إكمال كافة البيانات ورقم الحوالة/الوصل' });
+    return res.status(400).json({ success: false, error: 'يرجى إكمال كافة البيانات ورقم الحوالة' });
   }
-
-  if (supabase) {
-    try {
-      await supabase.from('orders').insert([{
-        student_name,
-        phone,
-        governorate: governorate || 'بغداد',
-        book_title,
-        payment_method,
-        transaction_ref,
-        price: PAYMENT_INFO.price,
-        status: 'قيد التحقق'
-      });
-    } catch (e) {}
-  }
-
   res.json({
     success: true,
-    message: 'تم إرسال طلبك ورقم الحوالة بنجاح! سيتم تفعيل الكتاب وتحميله لك عبر الواتساب فور التأكد من التحويل.'
+    message: 'تم إرسال طلبك ورقم الحوالة بنجاح! سيتم تفعيل الكتاب وتحميله لك فور التأكد من التحويل.'
   });
 });
 
 const PORT = process.env.PORT || 3000;
-app.server = app.listen(PORT, () => {
-  console.log(`Talabe Backend is running on port ${PORT}`);
+app.listen(PORT, () => {
+  console.log(`Server is running on port ${PORT}`);
 });
 
 module.exports = app;
