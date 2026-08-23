@@ -2,16 +2,6 @@ const express = require('express');
 const app = express();
 app.use(express.json());
 
-// معلومات الدفع والتحويل المعتمدة للمنصة
-const PAYMENT_INFO = {
-  zainCash: '07734376990',
-  rafidainCard: '910100728104',
-  rasheedCard: '6201 0000 0000 0000',
-  asiaHawala: '07734376998',
-  price: '10,000 دِينار عراقي',
-  supportPhone: '9647734376950'
-};
-
 // قائمة الملازم والمرشحات الرسمية لمنصة طلبتي
 const booksData = [
   { id: 1, title: 'مرشحات منصة طلبتي - الاجتماعيات الشاملة', category: 'اجتماعيات', teacher: 'الأستاذ قصي الدليمي', pages: '190 صفحة', desc: 'أبرز الأسئلة الوزارية المتكررة في التاريخ والجغرافيا والوطنية مع حلول نموذجية دقيقة.' },
@@ -27,7 +17,47 @@ const booksData = [
   { id: 11, title: 'بنك مرشحات منصة طلبتي الشامل (جميع المواد)', category: 'شامل', teacher: 'نخبة الأساتذة الأوائل', pages: '320 صفحة', desc: 'النسخة النهائية المرشحة لجميع الامتحانات الوزارية للأدوار السابقة.' }
 ];
 
-// API لجلب الملازم مباشرة بدون تعقيد
+// عرض الصفحة الرئيسية بتصميم احترافي لطلاب الثالث المتوسط
+app.get('/', (req, res) => {
+  res.send(`
+    <!DOCTYPE html>
+    <html lang="ar" dir="rtl">
+    <head>
+        <meta charset="UTF-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+        <title>منصة طلبتي التعليمية</title>
+        <style>
+            body { font-family: Tahoma, sans-serif; background: #0f172a; color: #fff; text-align: center; padding: 20px; }
+            h1 { color: #38bdf8; }
+            .container { max-width: 800px; margin: auto; background: #1e293b; padding: 20px; border-radius: 12px; box-shadow: 0 4px 10px rgba(0,0,0,0.3); }
+            .book { background: #334155; margin: 10px 0; padding: 15px; border-radius: 8px; text-align: right; }
+            .book h3 { margin: 0 0 5px 0; color: #facc15; }
+            .book p { margin: 5px 0; color: #cbd5e1; font-size: 14px; }
+        </style>
+    </head>
+    <body>
+        <div class="container">
+            <h1>🎓 منصة طلبتي التعليمية</h1>
+            <p>المتجر الرسمي للملازم والمرشحات الوزارية المعتمدة للصف الثالث المتوسط 2026</p>
+            <hr style="border-color: #475569;">
+            <h2>📚 قائمة الملازم والمرشحات المتاحة:</h2>
+            <div id="books-list">
+                ${booksData.map(b => `
+                    <div class="book">
+                        <h3>${b.title} (${b.pages})</h3>
+                        <p>👨‍🏫 ${b.teacher} | التصنيف: ${b.category}</p>
+                        <p>${b.desc}</p>
+                        <span style="color: #4ade80; font-weight: bold;">السعر: 10,000 د.ع</span>
+                    </div>
+                `).join('')}
+            </div>
+        </div>
+    </body>
+    </html>
+  `);
+});
+
+// API لجلب الملازم
 app.get('/api/books', (req, res) => {
   res.json(booksData);
 });
@@ -40,7 +70,7 @@ app.post('/api/orders', (req, res) => {
   }
   res.json({
     success: true,
-    message: 'تم إرسال طلبك ورقم الحوالة بنجاح! سيتم تفعيل الكتاب وتحميله لك فور التأكد من التحويل.'
+    message: 'تم إرسال طلبك بنجاح! سيتم تفعيل الكتاب وتحميله لك عبر الواتساب.'
   });
 });
 
