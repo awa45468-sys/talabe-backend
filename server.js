@@ -6,22 +6,26 @@ const app = express();
 app.use(express.json());
 app.use(cors());
 
-const MONGO_URI = process.env.MONGO_URI;
+const MONGO_URI = process.env.MONGO_URI || "";
 
-// دالة اتصال آمنة ومستقرة لبيئة Vercel
+// الاتصال بقاعدة البيانات
 let isConnected = false;
 async function connectDB() {
   if (isConnected) return;
+  if (!MONGO_URI) {
+    console.error('❌ MONGO_URI غير موجود في متغيرات البيئة!');
+    return;
+  }
   try {
     await mongoose.connect(MONGO_URI);
     isConnected = true;
-    console.log('✅ تم الاتصال بقاعدة بيانات MongoDB Atlas بنجاح!');
+    console.log('✅ تم الاتصال بقاعدة البيانات بنجاح');
   } catch (err) {
-    console.error('❌ خطأ في الاتصال بقاعدة البيانات:', err.message);
+    console.error('❌ خطأ في الاتصال:', err.message);
   }
 }
 
-// 1. نماذج قاعدة البيانات
+// النماذج
 const UserSchema = new mongoose.Schema({
   phone: { type: String, required: true, unique: true },
   verificationCode: String,
@@ -41,29 +45,17 @@ const BookSchema = new mongoose.Schema({
 });
 const Book = mongoose.models.Book || mongoose.model('Book', BookSchema);
 
-const FilterSchema = new mongoose.Schema({
-  title: String,
-  category: String,
-  year: String,
-  createdAt: { type: Date, default: Date.now }
-});
-const Filter = mongoose.models.Filter || mongoose.model('Filter', FilterSchema);
-
-
-// 2. الصفحة الرئيسية (تأكيد عمل السيرفر)
+// المسارات الأساسية
 app.get('/', async (req, res) => {
   await connectDB();
-  res.json({ success: true, message: 'مرحباً بك في سيرفر منصة طلبتي - API يعمل بنجاح 🚀' });
+  res.json({ success: true, message: 'منصة طلبتي تعمل بنجاح 🚀' });
 });
 
-// 3. مسارات المصادقة وتسجيل الدخول
 app.post('/api/send-code', async (req, res) => {
   try {
     await connectDB();
     const { phone } = req.body;
-    if (!phone) {
-      return res.status(400).json({ success: false, message: 'يرجى إدخال رقم الهاتف' });
-    }
+    if (!phone) return res.status(400).json({ success: false, message: 'رقم الهاتف مطلوب' });
     const code = Math.floor(1000 + Math.random() * 9000).toString();
     await User.findOneAndUpdate({ phone }, { verificationCode: code }, { upsert: true, new: true });
     res.json({ success: true, debugCode: code, message: 'تم إرسال الرمز بنجاح' });
@@ -87,7 +79,6 @@ app.post('/api/verify-code', async (req, res) => {
   }
 });
 
-// 4. مسارات الكتب والملازم
 app.get('/api/books', async (req, res) => {
   try {
     await connectDB();
@@ -98,67 +89,5 @@ app.get('/api/books', async (req, res) => {
   }
 });
 
-app.post('/api/books', async (req, res) => {
-  try {
-    await connectDB();
-    const newBook = new Book(req.body);
-    await newBook.save();
-    res.json({ success: true, message: 'تم إضافة الكتاب بنجاح', book: newBook });
-  } catch (err) {
-    res.status(500).json({ success: false, error: err.message });
-  }
-});
-
-// 5. مسارات المرشحات الوزارية
-app.get('/api/filters', async (req, res) => {
-  try {
-    await connectDB();
-    const filters = await Filter.find().sort({ createdAt: -1 });
-    res.json({ success: true, filters });
-  } catch (err) {
-    res.status(500).json({ success: false, error: err.message });
-  }
-});
-
-app.post('/api/filters', async (req, res) => {
-  try {
-    await connectDB();
-    const newFilter = new Filter(req.body);
-    await newFilter.save();
-    res.json({ success: true, message: 'تم إضافة المرشح بنجاح', filter: newFilter });
-  } catch (err) {
-    res.status(500).json({ success: false, error: err.message });
-  }
-});
-
-// 6. إحصائيات لوحة التحكم
-app.get('/api/admin/stats', async (req, res) => {
-  try {
-    await connectDB();
-    const totalStudents = await User.countDocuments();
-    const totalBooks = await Book.countDocuments();
-    const totalFilters = await Filter.countDocuments();
-
-    res.json({
-      success: true,
-      stats: {
-        students: totalStudents + 50250,
-        books: totalBooks,
-        filters: totalFilters + 120,
-        sales: "125,500"
-      }
-    });
-  } catch (err) {
-    res.status(500).json({ success: false, error: err.message });
-  }
-});
-
-// تشغيل السيرفر محلياً أو تصديره لـ Vercel
-const PORT = process.env.PORT || 3000;
-if (process.env.NODE_ENV !== 'production') {
-  app.listen(PORT, () => {
-    console.log(`🚀 السيرفر يعمل محلياً على البورت: ${PORT}`);
-  });
-}
-
+// تصدير التطبيق لـ Vercel
 module.exports = app;
