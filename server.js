@@ -1,11 +1,37 @@
+{
+  "name": "talabti-app",
+  "version": "1.0.0",
+  "description": "منصة طلبتي التعليمية الشاملة - العراق",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js"
+  },
+  "dependencies": {
+    "express": "^4.18.2"
+  }
+}
+{
+  "version": 2,
+  "builds": [
+    {
+      "src": "server.js",
+      "use": "@vercel/node"
+    }
+  ],
+  "routes": [
+    {
+      "src": "/(.*)",
+      "dest": "server.js"
+    }
+  ]
+}
 const express = require('express');
-const path = require('path');
-
 const app = express();
+
 app.use(express.json({ limit: '10mb' }));
 app.use(express.urlencoded({ extended: true, limit: '10mb' }));
 
-// ================= ====================================
+// ======================================================
 // 1. قاعدة البيانات المؤقتة الشاملة (In-Memory Database)
 // ======================================================
 
@@ -69,7 +95,7 @@ let questionBank = {
   ]
 };
 
-// ================= ====================================
+// ======================================================
 // 2. مسارات ملفات PWA (Manifest & Service Worker)
 // ======================================================
 
@@ -104,7 +130,7 @@ app.get('/sw.js', (req, res) => {
   `);
 });
 
-// ================= ====================================
+// ======================================================
 // 3. مسارات واجهة البرمجة (APIs Backend)
 // ======================================================
 
@@ -150,10 +176,10 @@ app.post('/api/subscriptions/pay', (req, res) => {
     id: subscriptions.length + 1,
     user_id: parseInt(user_id),
     subject_id: parseInt(subject_id),
-    method, // zain_cash, rafidain, rasheed, manual
+    method,
     receipt,
     amount: 10000,
-    status: "approved", // موافقة تلقائية فورية
+    status: "approved",
     date: new Date().toISOString().split('T')[0]
   };
   subscriptions.push(newSub);
@@ -187,7 +213,7 @@ app.post('/api/exams/submit', (req, res) => {
   res.json({ success: true, result });
 });
 
-// مساعد طلبتi AI
+// مساعد طلبتي AI
 app.post('/api/ai/chat', (req, res) => {
   const { prompt } = req.body;
   const reply = `أهلاً بك في مساعد طلبتي الذكي 🤖\nبناءً على المنهج العراقي لـ "${prompt}": يُنصح بضبط التعاريف المكررة وزارياً للسنوات (2012-2026) واتباع خطوات الحل المعتمدة بمركز الفحص.`;
@@ -208,7 +234,7 @@ app.get('/api/admin/stats', (req, res) => {
   });
 });
 
-// ================= ====================================
+// ======================================================
 // 4. الواجهة الأمامية الشاملة (HTML + RTL Frontend + PWA)
 // ======================================================
 
@@ -445,7 +471,6 @@ app.get('*', (req, res) => {
     let activeSubjectIds = [];
     let currentOpenSubjectId = null;
 
-    // تسجيل Service Worker للـ PWA
     if ('serviceWorker' in navigator) {
       navigator.serviceWorker.register('/sw.js');
     }
@@ -676,5 +701,14 @@ app.get('*', (req, res) => {
   `);
 });
 
-const PORT = process.env.PORT || 3000;
-app.listen(PORT, () => console.log(`🚀 Talabti Platform Running on http://localhost:${PORT}`));
+// ======================================================
+// 5. التصدير لبيئة Vercel
+// ======================================================
+
+module.exports = app;
+
+// التشغيل المحلي فقط عند تشغيل الملف بـ node server.js
+if (process.env.NODE_ENV !== 'production' && !process.env.VERCEL) {
+  const PORT = process.env.PORT || 3000;
+  app.listen(PORT, () => console.log(`🚀 Talabti Platform Running on http://localhost:${PORT}`));
+}
