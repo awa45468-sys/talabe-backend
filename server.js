@@ -1,76 +1,91 @@
 const express = require("express");
-const { createClient } = require("@supabase/supabase-js");
 const cors = require("cors");
+const { createClient } = require("@supabase/supabase-js");
 
 const app = express();
 
 app.use(cors());
 app.use(express.json());
 
-// اتصال Supabase
+// Supabase
 const supabase = createClient(
   process.env.SUPABASE_URL,
   process.env.SUPABASE_ANON_KEY
 );
 
-// اختبار الاتصال
+// اختبار السيرفر
 app.get("/", (req, res) => {
   res.json({
-    status: "Talabe Backend Running",
-    supabase: "Connected"
+    message: "Talabe Backend is Running",
+    status: "OK"
   });
 });
 
 // جلب المواد
 app.get("/subjects", async (req, res) => {
-  const { data, error } = await supabase
-    .from("subjects")
-    .select("*");
+  try {
+    const { data, error } = await supabase
+      .from("subjects")
+      .select("*");
 
-  if (error) {
-    return res.status(500).json(error);
+    if (error) throw error;
+
+    res.json(data);
+  } catch (error) {
+    res.status(500).json({
+      error: error.message
+    });
   }
-
-  res.json(data);
 });
 
-// جلب الملفات والملازم
+// جلب الملازم والملفات
 app.get("/files", async (req, res) => {
-  const { data, error } = await supabase
-    .from("files")
-    .select("*");
+  try {
+    const { data, error } = await supabase
+      .from("files")
+      .select("*");
 
-  if (error) {
-    return res.status(500).json(error);
+    if (error) throw error;
+
+    res.json(data);
+  } catch (error) {
+    res.status(500).json({
+      error: error.message
+    });
   }
-
-  res.json(data);
 });
 
-// تسجيل طالب
+// إضافة طالب
 app.post("/students", async (req, res) => {
-  const { name, phone } = req.body;
 
-  const { data, error } = await supabase
-    .from("users")
-    .insert([
-      {
-        name,
-        phone
-      }
-    ])
-    .select();
+  try {
 
-  if (error) {
-    return res.status(500).json(error);
+    const { name, phone } = req.body;
+
+    const { data, error } = await supabase
+      .from("users")
+      .insert([
+        {
+          name: name,
+          phone: phone
+        }
+      ])
+      .select();
+
+    if (error) throw error;
+
+    res.json(data);
+
+  } catch(error){
+
+    res.status(500).json({
+      error: error.message
+    });
+
   }
 
-  res.json(data);
 });
 
 
-const PORT = process.env.PORT || 3000;
-
-app.listen(PORT, () => {
-  console.log(`Talabe Backend running on ${PORT}`);
-});
+// مهم لـ Vercel
+module.exports = app;
